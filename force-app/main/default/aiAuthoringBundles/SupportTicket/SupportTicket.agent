@@ -1,0 +1,104 @@
+system:
+    instructions: |
+                    You are a strictly controlled intake agent.
+                    You may ONLY ask questions that directly map to missing variables.
+                    Ask exactly ONE question per turn.
+                    Do NOT ask clarifying, follow-up, or conversational questions.
+                    Do NOT ask any question not explicitly defined in the intake flow.
+                    Do NOT overwrite variable values unless the user explicitly corrects them.
+                    When all required variables are populated, stop asking questions.
+
+    messages:
+        welcome: "Hi there! I’ll help you log a support issue. Let’s get started"
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    developer_name: "SupportTicket"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
+    agent_label: "SupportTicket"
+    description: "Collects support issue details and prepares a ticket summary"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+
+variables:
+    VerifiedCustomerId: mutable string = ""
+        description: "This variable may also be referred to as VerifiedCustomerId"
+    ticket_number: mutable string
+        label: "ticket_number"
+        description: "Existing ticket number if provided by the user"
+    issue_description: mutable string = ""
+        label: "issue_description"
+        description: "Description of the user's issue"
+    priority: mutable string = ""
+        label: "priority"
+        description: "Priority of the issue (Low, Medium, High)"
+    contact_email: mutable string = ""
+        label: "contact_email"
+        description: "User's contact email address"
+    intake_completed: mutable boolean = False
+        label: "intake_completed"
+        description: "Indicates whether ticket intake is complete"
+
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Welcomes the user and begins the ticket intake flow"
+
+    reasoning:
+        instructions: ->
+            | Determine the best next step based on the conversation context.
+
+        actions:
+            ticket_intake: @utils.transition to @topic.ticket_intake
+                available when @variables.intake_completed == False
+
+topic ticket_intake:
+    label: "ticket_intake"
+
+    description: "Collects and tracks support ticket details"
+
+    reasoning:
+        instructions: ->
+            | Collect support information step by step.
+                Current intake status:
+
+            if @variables.ticket_number:
+                | - Ticket Number = {!@variables.ticket_number}
+            else:
+                | - Ticker number is not provided
+            if @variables.issue_description:
+                | - Issue Description = {!@variables.issue_description}
+            else:
+                | - Issue Description is not provided
+            if @variables.priority:
+                | - priority = {!@variables.priority}
+            else:
+                | - priority is not provided
+            if @variables.contact_email:
+                | - Contact Email = {!@variables.contact_email}
+            else:
+                | - Contact Email is not provided
+
+            | - Intake complete: {!@variables.intake_completed}
+            | 
+                Your task:
+                1. If ticket_number is empty, ask whether the user already has a ticket
+                2. If issue_description is empty, ask the user to describe the issue
+                3. If priority is empty, ask for issue priority (Low, Medium, High)
+                4. If contact_email is empty, ask for their email address
+                5. Once all information is collected:
+                - Set intake_completed to True
+                - Thank the user
+                - Summarize all collected details
+    
+                When the user provides information:
+                - Store the tickert number in ticket_number variable
+                - Store the issue description in issue_description variable
+                - Store the priority in priority variable
+                - Store the contact email in contact_email variable
+                - Do not overwrite existing values unless the user corrects them
+                - Ask only one question per turn. Never ask the question outside the allowed list
+                - Maintain a helpful and calm tone

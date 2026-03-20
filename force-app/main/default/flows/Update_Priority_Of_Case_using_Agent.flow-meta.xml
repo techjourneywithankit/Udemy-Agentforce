@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Get_Case_Priority</name>
+        <label>Get Case Priority</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <actionName>CasePriorityRecommendation</actionName>
+        <actionType>generateAiAgentResponse</actionType>
+        <connector>
+            <targetReference>Is_Agent_Response_Available</targetReference>
+        </connector>
+        <dataTypeMappings>
+            <apexClass>LightningTypes__UpdatePriorityOfCaseusingAgentGetCasePriority</apexClass>
+            <typeName>U__agentResponseApex</typeName>
+        </dataTypeMappings>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>userMessage</name>
+            <value>
+                <stringValue>Can you help me with the priority of the case
+Subject - {!$Record.Subject}
+Description - {!$Record.Description}</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>ApexClassName</name>
+            <value>
+                <stringValue>LightningTypes__UpdatePriorityOfCaseusingAgentGetCasePriority</stringValue>
+            </value>
+        </inputParameters>
+        <nameSegment>CasePriorityRecommendation</nameSegment>
+        <offset>0</offset>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+        <versionString>1.1.0</versionString>
+    </actionCalls>
+    <apiVersion>65.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <decisions>
+        <name>Is_Agent_Response_Available</name>
+        <label>Is Agent Response Available ?</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <defaultConnectorLabel>No</defaultConnectorLabel>
+        <rules>
+            <name>Yes</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>Get_Case_Priority.structuredAgentResponse.validationPassed</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue>
+                    <booleanValue>true</booleanValue>
+                </rightValue>
+            </conditions>
+            <connector>
+                <targetReference>Update_Case_Priority</targetReference>
+            </connector>
+            <label>Yes</label>
+        </rules>
+    </decisions>
+    <environments>Default</environments>
+    <interviewLabel>Update Priority Of Case using Agent {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Update Priority Of Case using Agent</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordUpdates>
+        <name>Update_Case_Priority</name>
+        <label>Update Case Priority</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <inputAssignments>
+            <field>Priority</field>
+            <value>
+                <elementReference>Get_Case_Priority.structuredAgentResponse.recommendedPriority</elementReference>
+            </value>
+        </inputAssignments>
+        <inputReference>$Record</inputReference>
+    </recordUpdates>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <doesRequireRecordChangedToMeetCriteria>true</doesRequireRecordChangedToMeetCriteria>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Priority</field>
+            <operator>EqualTo</operator>
+            <value>
+                <stringValue>Not Sure</stringValue>
+            </value>
+        </filters>
+        <object>Case</object>
+        <recordTriggerType>CreateAndUpdate</recordTriggerType>
+        <scheduledPaths>
+            <connector>
+                <targetReference>Get_Case_Priority</targetReference>
+            </connector>
+            <pathType>AsyncAfterCommit</pathType>
+        </scheduledPaths>
+        <triggerType>RecordAfterSave</triggerType>
+    </start>
+    <status>Active</status>
+</Flow>

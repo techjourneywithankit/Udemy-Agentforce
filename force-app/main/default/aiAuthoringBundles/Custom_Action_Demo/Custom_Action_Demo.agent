@@ -1,0 +1,156 @@
+system:
+    instructions: "You are a Contact Assistant. Help users look up contacts by email or create new contacts. Politely decline other requests."
+
+    messages:
+        welcome: "Welcome! I'm your Contact Assistant. Please provide an email address to look up a contact."
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    developer_name: "Custom_Action_Demo"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
+    agent_label: "Custom Action Demo"
+    description: "Contact lookup and creation using custom actions"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+
+variables:
+   email: mutable string = ""
+      description: "Email address for contact lookup"
+
+   lookup_done: mutable boolean = False
+      description: "Whether contact lookup has been performed"
+
+   contact_found: mutable boolean = False
+      description: "Whether contact exists with this email"
+
+   contact_name: mutable string = ""
+      description: "Name of found contact"
+
+   lastname: mutable string = ""
+      description: "Last name for new contact"
+
+   phone: mutable string = ""
+      description: "Phone number for new contact"
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Welcome the user and Route to contact management"
+
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+
+        actions:
+            start: @utils.transition to @topic.contact_management
+                description: "Start contact management"
+
+topic contact_management:
+    label: "contact_management"
+
+    description: "Contact lookup and creation workflow"
+
+    reasoning:
+        instructions: ->
+            |   ## RULES
+                - ONLY help with contact lookup or creation
+                - Politely decline other requests
+
+               ## STATUS
+                - Email: {!@variables.email}
+                - Lookup Done: {!@variables.lookup_done}
+                - Contact Found: {!@variables.contact_found}
+                - Contact Name: {!@variables.contact_name}
+                - Last Name: {!@variables.lastname}
+                - Phone: {!@variables.phone}
+
+              if not @variables.email:
+                | ## WAITING FOR EMAIL
+                Ask user for an email address.
+                When user provides email, call {!@actions.store_email} THEN call {!@actions.do_lookup}.
+                You MUST call BOTH actions in sequence.
+
+              if @variables.email and not @variables.lookup_done:
+                | ## LOOKUP PENDING
+                Email is stored but lookup not done yet.
+                Call {!@actions.do_lookup} NOW.
+
+              if @variables.lookup_done and @variables.contact_found:
+                | ## CONTACT FOUND
+                Tell user: "Great news! I found an existing contact."
+                - Name: {!@variables.contact_name}
+                - Email: {!@variables.email}
+                Ask if they want to look up another contact.
+            
+               if @variables.lookup_done and not @variables.contact_found and (not @variables.lastname or not @variables.phone):
+                | ## CONTACT NOT FOUND - COLLECT DETAILS
+                Tell user: "No contact found with email {!@variables.email}."
+                Ask: "Would you like to create a new contact? Please provide the last name and phone number."
+                When user provides both lastname and phone, call {!@actions.store_contact_details}
+
+                if @variables.lookup_done and not @variables.contact_found and @variables.lastname and @variables.phone:
+                | ## CREATE CONTACT
+                All details collected. Call {!@actions.create_new_contact} NOW.
+
+        actions:
+            store_email: @utils.setVariables
+                description: "Store the email address provided by user"
+                with email = ...
+
+            store_contact_details: @utils.setVariables
+                description: "Store last name and phone number for new contact"
+                available when @variables.lookup_done and not @variables.contact_found
+                with lastname = ...
+                with phone = ...
+
+            do_lookup: @actions.validate_contact
+                description: "Look up contact by stored email"
+                available when @variables.email and not @variables.lookup_done
+                with email = @variables.email
+                set @variables.contact_found = @outputs.contact_found
+                set @variables.contact_name = @outputs.contact_name
+                set @variables.lookup_done = True
+
+            create_new_contact: @actions.create_contact
+                description: "Create the new contact"
+                available when @variables.lookup_done and not @variables.contact_found and @variables.lastname
+                with lastname = @variables.lastname
+                with email = @variables.email
+                with phone = @variables.phone
+
+
+    actions:
+        validate_contact:
+            description: "Check if contact exists by email"
+            inputs:
+                email: string
+                    description: "Email to search"
+                    is_required: True
+            outputs:
+                contact_found: boolean
+                    description: "True if contact exists"
+                contact_name: string
+                    description: "Contact name if found"
+            target: "flow://Validate_Contact_By_Email"
+            label: "Validate Contact"
+
+        create_contact:
+            description: "Create new contact"
+            inputs:
+                lastname: string
+                    description: "Last name"
+                    is_required: True
+                email: string
+                    description: "Email address"
+                    is_required: True
+                phone: string
+                    description: "Phone number"
+            outputs:
+                success: boolean
+                    description: "True if created"
+                message: string
+                    description: "Result message"
+            target: "apex://ContactCreationService"
+            label: "Create Contact"

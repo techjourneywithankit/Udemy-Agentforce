@@ -1,0 +1,86 @@
+<template>
+  <section class="slds-card slds-p-around_medium container">
+    <div class="slds-m-bottom_medium">
+      <h2 class="slds-text-heading_small">Lead Information</h2>
+    </div>
+
+    <div class="slds-grid slds-wrap slds-gutters">
+      <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+        <lightning-combobox
+          label="Where is your business based?"
+          name="country"
+          value={country}
+          options={countryOptions}
+          onchange={handleInputChange}
+          required
+        ></lightning-combobox>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+        <lightning-input
+          type="text"
+          label="First Name"
+          name="firstName"
+          value={firstName}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+        <lightning-input
+          type="text"
+          label="Last Name"
+          name="lastName"
+          value={lastName}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+        <lightning-input
+          type="email"
+          label="Email"
+          name="email"
+          value={email}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+        <lightning-input
+          type="tel"
+          label="Phone Number"
+          name="phone"
+          value={phone}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+        <lightning-input
+          type="text"
+          label="Company Name"
+          name="companyName"
+          value={companyName}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+
+      <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
+        <lightning-input
+          type="text"
+          label="Title"
+          name="title"
+          value={title}
+          onchange={handleInputChange}
+          required
+        ></lightning-input>
+      </div>
+    </div>
+  </section>
+</template>

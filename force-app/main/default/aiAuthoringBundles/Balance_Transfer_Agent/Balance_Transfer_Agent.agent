@@ -1,0 +1,179 @@
+system:
+    instructions: "You are a banking transfer agent. Security and accuracy are critical. Always validate information before processing transfers. Never proceed if there are any doubts or errors."
+
+    messages:
+        welcome: "I can help you transfer funds between accounts. Let's make sure we do this safely."
+        error: "I encountered a technical issue. Your transfer was not processed. Please try again or contact support."
+
+config:
+    developer_name: "Balance_Transfer_Agent"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
+    agent_label: "Balance Transfer Agent"
+    description: "Handles account transfers with comprehensive validation and error handling"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+
+variables:
+   source_account: mutable string = ""
+      description: "Account to transfer from"
+
+   destination_account: mutable string = ""
+      description: "Account to transfer to"
+
+   transfer_amount: mutable number = 0
+      description: "Amount to transfer"
+
+   source_balance: mutable number = 0
+      description: "Balance of source account"
+
+   transfer_limit: mutable number = 10000
+      description: "Maximum allowed transfer amount"
+
+   validation_passed: mutable boolean = False
+      description: "Whether all validations passed"
+
+   validation_information: mutable string = ""
+      description: "Human readable validation information"
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Welcome users and begin secure account transfer process"
+
+    reasoning:
+        instructions: ->
+            | Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+
+        actions:
+            go_to_account_transfer: @utils.transition to @topic.account_transfer
+                description: "Begin the account transfer with validation and error handling"
+
+
+topic account_transfer:
+    # new topic
+    label: "account_transfer"
+    description: "Handles account-to-account transfers with validation"
+    reasoning:
+        instructions: ->
+            | Always ensure to request the following data from the user, and to store it using {!@actions.store_details}
+            | - source account number
+                - destination account number
+                - amount to transfer
+    
+                Only after you have all the data, you can proceed with the next steps.
+
+            if not @variables.source_account:
+                set @variables.validation_information = "Missing source account"
+                set @variables.validation_passed = False
+                | You need the source account number before proceeding.
+                    Ask the customer for the source account number.
+            else:
+                set @variables.validation_passed = True
+
+            if @variables.source_account and not @variables.destination_account:
+                set @variables.validation_information = "Missing destination account"
+                set @variables.validation_passed = False
+                | You need the destination account number before proceeding.
+                    Ask the customer for the destination account number.
+            else:
+                set @variables.validation_passed = True
+
+            if not @variables.source_account or not @variables.destination_account:
+                | Do NOT proceed with the transfer yet.
+
+            if @variables.transfer_amount <= 0:
+                set @variables.validation_information = "Invalid transfer amount"
+                set @variables.validation_passed = False
+                | The transfer amount must be greater than zero. Ask the customer
+                    how much they want to transfer.
+                    Do NOT proceed with the transfer yet.
+            else:
+                set @variables.validation_passed = True
+
+            if @variables.transfer_amount > @variables.transfer_limit:
+                set @variables.validation_information = "Amount exceeds transfer limit"
+                set @variables.validation_passed = False
+                | ⚠️ STOP: The requested amount ($ {!@variables.transfer_amount} ) exceeds
+                    the maximum transfer limit of $ {!@variables.transfer_limit} .
+            else:
+                set @variables.validation_passed = True
+
+            if @variables.source_account and not @variables.source_balance:
+                run @actions.get_account_balance
+                    with account_number = @variables.source_account
+                    set @variables.source_balance = @outputs.balance
+            else:
+                set @variables.validation_passed = True
+
+            if @variables.source_balance < @variables.transfer_amount:
+                set @variables.validation_information = "Insufficient funds"
+                set @variables.validation_passed = False
+                | ⚠️ STOP: Insufficient funds in the source account.
+                    - Available balance: $ {!@variables.source_balance}
+                    - Requested transfer: $ {!@variables.transfer_amount}
+                    - Shortfall: $ {!@variables.transfer_amount} - {!@variables.source_balance}
+                    Ask if they'd like to transfer a smaller amount.
+                    Do NOT proceed with the transfer.
+            else:
+                set @variables.validation_passed = True
+
+            if @variables.source_account == @variables.destination_account:
+                set @variables.validation_information = "Source and destination are the same"
+                set @variables.validation_passed = False
+                | ⚠️ STOP: You cannot transfer to the same account.
+                    The source and destination accounts are identical.
+                    Ask for the correct destination account.
+                    Do NOT proceed with the transfer.
+            else:
+                set @variables.validation_passed = True
+            
+            | In case the validation fails, return {!@variables.validation_information}  to the user and do NOT proceed with the transfer.
+            | If {!@variables.validation_passed} , execute the transfer using {!@actions.execute_transfer} .
+
+        actions:
+            store_details : @utils.setVariables
+                with source_account = ...
+                with destination_account = ...
+                with transfer_amount = ...                
+            
+            get_account_balance : @actions.get_account_balance
+                with account_number = ...
+                set @variables.source_balance = @outputs.balance
+
+            execute_transfer: @actions.execute_transfer
+                available when @variables.validation_passed
+                with from_Account = @variables.source_account
+                with to_Account = @variables.destination_account
+                with amount = @variables.transfer_amount
+
+
+    actions:
+        get_account_balance:
+            description: "Gets the current balance for an account"
+            inputs:
+                account_number:string
+                    description: "The account number to check the balance for"
+            outputs:
+                balance: number
+                    description: "Current account balance as a monetary amount"
+                account_valid: boolean
+                    description: "Indicates whether the account number is valid and active"
+            target: "flow://Get_Account_Balance"
+
+        execute_transfer:
+            description: "Executes the transfer between accounts"
+            inputs:
+                from_Account: string
+                    description: "Source account number to transfer funds from"
+                to_Account: string
+                    description: "Destination account number to transfer funds to"
+                amount: number
+                    description: "Amount of money to transfer (must be positive and within limits)"
+            outputs:
+                success: boolean
+                    description: "Indicates whether the transfer was completed successfully"
+                transaction_id: string
+                    description: "Unique transaction identifier for the completed transfer"
+            target: "flow://Execute_Transfer"

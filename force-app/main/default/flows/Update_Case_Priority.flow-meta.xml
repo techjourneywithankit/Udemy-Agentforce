@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>65.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Assign_Error_Message</name>
+        <label>Error Message</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>Output_Case_Priority_Update_Summary</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Case priority could not be updated. Please verify the provided details and try again.</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <assignments>
+        <name>Assign_Success_Message</name>
+        <label>Success Operation Message</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>Output_Case_Priority_Update_Summary</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Case priority has been updated successfully.</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <description>This Flow updates the Priority of an existing Case based on the input provided by the Agentforce action.
+It accepts the Case Id and the new Case Priority, performs a controlled Update DML operation, and returns a human-readable summary indicating whether the update was successful or failed.</description>
+    <environments>Default</environments>
+    <interviewLabel>Update Case Priority {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Update Case Priority</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <recordUpdates>
+        <name>Update_Case_Priority</name>
+        <label>Update Case Priority</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Assign_Success_Message</targetReference>
+        </connector>
+        <faultConnector>
+            <targetReference>Assign_Error_Message</targetReference>
+        </faultConnector>
+        <filterLogic>and</filterLogic>
+        <filters>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value>
+                <elementReference>Input_Case_Id</elementReference>
+            </value>
+        </filters>
+        <inputAssignments>
+            <field>Priority</field>
+            <value>
+                <elementReference>Input_Case_Priority</elementReference>
+            </value>
+        </inputAssignments>
+        <object>Case</object>
+    </recordUpdates>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Update_Case_Priority</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <description>The Id of the Case whose Priority needs to be updated.</description>
+        <name>Input_Case_Id</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>Input_Case_Priority</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>Output_Case_Priority_Update_Summary</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

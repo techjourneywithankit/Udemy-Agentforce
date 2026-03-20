@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <description>Recommend Case Priority</description>
+    <developerName>Recommend_Case_Priority</developerName>
+    <masterLabel>Recommend Case Priority</masterLabel>
+    <templateVersions>
+        <content>You are a Salesforce support expert analyzing Case records to determine the appropriate Priority level.
+
+Analyze the following Case information and recommend the most appropriate Priority value: High, Medium, or Low.
+
+**Case Subject:** {!$Input:caseSubject}
+
+**Case Description:** {!$Input:caseDescription}
+
+**Guidelines for Priority Assignment:**
+
+- **High Priority**: Use for urgent issues that require immediate attention, such as:
+ - System outages or critical functionality broken
+ - Security concerns or data breaches
+ - Customer escalations or VIP customers
+ - Revenue-impacting issues
+ - Keywords: urgent, critical, down, broken, escalation, emergency, outage, security breach
+
+- **Medium Priority**: Use for important issues that need timely resolution but are not critical, such as:
+ - Feature requests or enhancements
+ - Non-critical bugs or errors
+ - General support questions
+ - Standard customer inquiries
+ - Keywords: question, help, feature, enhancement, bug, issue, problem
+
+- **Low Priority**: Use for informational requests or non-urgent matters, such as:
+ - General inquiries or information requests
+ - Documentation requests
+ - Non-urgent feedback
+ - Routine administrative tasks
+ - Keywords: information, documentation, feedback, general inquiry, routine
+
+**Important Instructions:**
+- Respond with ONLY one word: &quot;High&quot;, &quot;Medium&quot;, or &quot;Low&quot;
+- Do not include any explanation, reasoning, or additional text
+- Base your recommendation solely on the Case Subject and Description provided
+- If the information is insufficient, default to &quot;Medium&quot;
+
+**Your Response (one word only):**
+</content>
+        <inputs>
+            <apiName>caseSubject</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Case Subject</masterLabel>
+            <referenceName>Input:caseSubject</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>caseDescription</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Case Description</masterLabel>
+            <referenceName>Input:caseDescription</referenceName>
+            <required>false</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

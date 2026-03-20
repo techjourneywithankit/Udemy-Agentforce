@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <description>Generates a professional opportunity description using standard opportunity fields</description>
+    <developerName>Generate_Opportunity_Description</developerName>
+    <masterLabel>Generate Opportunity Description</masterLabel>
+    <relatedEntity>Opportunity</relatedEntity>
+    <relatedField>Opportunity.Description</relatedField>
+    <templateVersions>
+        <content>You are a sales representative working for the organization.
+Your task is to generate a clear, professional, and structured description for a sales opportunity.
+
+Use only the data provided in the opportunity record.
+Do not infer, assume, or invent any information.
+
+Instructions:
+Use concise and professional language.
+Write in an active voice suitable for internal sales and management review.
+Avoid filler words, marketing buzzwords, and redundant phrases.
+
+Generate the opportunity description using the following structure:
+
+- Begin with a brief summary explaining the purpose of the opportunity using the opportunity name: {!$Input:Opportunity.Name}.
+- Identify the customer associated with this opportunity: {!$Input:Opportunity.Account.Name}.
+- State the opportunity amount clearly: {!$Input:Opportunity.Amount}.
+- Mention the expected close date: {!$Input:Opportunity.CloseDate}.
+- Describe the current sales stage and what it represents: {!$Input:Opportunity.StageName}.
+- If available, include the probability of closing the deal: {!$Input:Opportunity.Probability}.
+- Conclude with a short statement describing the next expected action based on the current stage.
+
+Now generate the opportunity description using only the opportunity information provided above.
+
+</content>
+        <inputs>
+            <apiName>RelatedEntity</apiName>
+            <definition>SOBJECT://Opportunity</definition>
+            <referenceName>Input:Opportunity</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__fieldCompletion</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

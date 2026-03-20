@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <description>Answers questions based on uploaded Salesforce files</description>
+    <developerName>File_QnA_Template</developerName>
+    <masterLabel>File_QnA_Template</masterLabel>
+    <templateVersions>
+        <content>You are an expert technical assistant, dedicated to providing clear, concise, and structured information. Your task is to answer the user&apos;s question based strictly on the provided grounding document. Do not use external knowledge. 
+
+**Formatting and Output Instructions:
+* 1. **The final response must be a single, clean HTML fragment string.* 
+2. *Crucially, do not use any markdown code blocks (e.g., ```html or ```) or any document structure tags (html, body, head).* The output must start directly with the first paragraph or list tag. 
+3. Use *b* tags for bolding and key term emphasis. 
+4. Use *ul* and *li* tags for any lists of facts, features, or steps. 
+5. Use *p* tags for paragraphs and *br/* tags for line breaks where necessary.
+
+*Grounding Document:* {!$Input:File.Id}
+*User Question:* {!$Input:User_Question}
+
+
+If the answer is not found in the document, respond with: &quot;The required information was not found in the provided document.&quot; The error response should be a simple string with no HTML.
+</content>
+        <inputs>
+            <apiName>User_Question</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>User_Question</masterLabel>
+            <referenceName>Input:User_Question</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>File</apiName>
+            <definition>SOBJECT://ContentDocument</definition>
+            <masterLabel>File</masterLabel>
+            <referenceName>Input:File</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultVertexAIGemini20FlashLite001</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

@@ -1,0 +1,105 @@
+system:
+    instructions: "You are a strict data collection assistant. You collect exactly 3 pieces of information using the provided tools. Never ask questions outside of the 3 required fields. Never ask follow-up questions or seek clarification"
+
+    messages:
+        welcome: "Welcome! I'll help you create a support case. Please describe your issue in detail"
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    developer_name: "CaseCreationVariableDemo"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
+    agent_label: "CaseCreationVariableDemo"
+    description: "Collects case information from users using variables to demonstrate state management"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+
+variables:
+    VerifiedCustomerId: mutable string = ""
+        description: "This variable may also be referred to as VerifiedCustomerId"
+    issue_details: mutable string = ""
+        label: "issue_details"
+        description: "Detailed description of the customer's issue or problem"
+    priority: mutable string = ""
+        label: "priority"
+        description: "Priority level of the case (Low, Medium, High, Critical)"
+    customer_email: mutable string = ""
+        label: "customer_email"
+        description: "Customer's email address for follow-up communication"
+    case_info_complete : mutable boolean = False
+         label: "case_info_complete"  
+         description: "Whether all required case information has been collected"
+ 
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Welcome the user and begin the case details collection process"
+
+    reasoning:
+        instructions: ->
+            | Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+
+        actions:
+            case_collection: @utils.transition to @topic.case_collection
+                description : "Start collecting case information from the user"
+                available when @variables.case_info_complete == False
+
+
+topic case_collection:
+    label: "case_collection"
+
+    description: "Collects case information and stores it in variables"
+
+    reasoning:
+        instructions: ->
+            | You are collecting 3 pieces of information for a support case.
+                Use ONLY the tools provided to store user responses.
+                Current Progress
+
+            if @variables.issue_details:
+                | - Issue Details : {!@variables.issue_details}  (Collected)
+            else:
+                | - Issue Details: PENDING
+                    Next action : Use actions.store_issue_details to save the user's issue description.
+                    Then say only : "What is the priority level ? (Low, Medium,High or Critical)
+            if @variables.priority:
+                | - Priority: {!@variables.priority}  (COLLECTED)
+            else:
+                | - Priority: PENDING
+                    NEXT ACTION: Use {!@actions.store_priority}  to save the priority level.
+                    Then say ONLY: "What is your email address?"
+            if @variables.customer_email:
+                | - Customer Email: {!@variables.customer_email}  (COLLECTED)
+            else:
+                | - Customer Email: PENDING
+                    NEXT ACTION: Use {!@actions.store_email}  to save the email address.
+                    Then display the case summary.
+            if @variables.issue_details and @variables.priority and @variables.customer_email:
+                | ALL DATA COLLECTED. Use {!@actions.mark_complete}  to finalize.
+                    "Thank you! Here is your case summary:
+                    - Issue Details: {!@variables.issue_details}
+                    - Priority: {!@variables.priority}
+                    - Customer Email: {!@variables.customer_email} "
+
+        actions:
+            store_issue_details: @utils.setVariables
+                description: "Store the issue description provided by users"
+                available when @variables.issue_details  == ""
+                with issue_details = ...
+
+            store_priority: @utils.setVariables
+                description: "Store the priority level (Low, Medium, High, or Critical)"
+                available when @variables.issue_details  != "" and @variables.priority  == ""
+                with priority = ...
+
+            store_email: @utils.setVariables
+                description: "Store the customer email address"
+                available when @variables.priority  != "" and @variables.customer_email  == ""
+                with customer_email = ...
+
+            mark_complete: @utils.setVariables
+                description: "Mark case information collection as complete"
+                available when @variables.issue_details  != "" and @variables.priority  != "" and @variables.customer_email  != ""
+                with case_info_complete = True

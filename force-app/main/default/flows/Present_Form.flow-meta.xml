@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>65.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Assign_Details</name>
+        <label>Assign Details</label>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <assignmentItems>
+            <assignToReference>Form.leadFormJSON</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>{&quot;title&quot;:&quot;Contact Information&quot;,&quot;fields&quot;:[{&quot;id&quot;:&quot;country&quot;,&quot;label&quot;:&quot;Where is your business based?&quot;,&quot;type&quot;:&quot;select&quot;,&quot;options&quot;:[&quot;Canada&quot;,&quot;United States&quot;],&quot;required&quot;:true},{&quot;id&quot;:&quot;firstName&quot;,&quot;label&quot;:&quot;First Name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;required&quot;:true,&quot;width&quot;:&quot;half&quot;,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}},{&quot;id&quot;:&quot;lastName&quot;,&quot;label&quot;:&quot;Last Name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;required&quot;:true,&quot;width&quot;:&quot;half&quot;,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}},{&quot;id&quot;:&quot;email&quot;,&quot;label&quot;:&quot;Email&quot;,&quot;type&quot;:&quot;email&quot;,&quot;required&quot;:true,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}},{&quot;id&quot;:&quot;phone&quot;,&quot;label&quot;:&quot;Phone Number&quot;,&quot;type&quot;:&quot;phone&quot;,&quot;required&quot;:true,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}},{&quot;id&quot;:&quot;companyName&quot;,&quot;label&quot;:&quot;Company Name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;required&quot;:true,&quot;width&quot;:&quot;half&quot;,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}},{&quot;id&quot;:&quot;title&quot;,&quot;label&quot;:&quot;Title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;required&quot;:true,&quot;width&quot;:&quot;half&quot;,&quot;showIf&quot;:{&quot;field&quot;:&quot;country&quot;,&quot;value&quot;:&quot;Canada&quot;}}],&quot;submitText&quot;:&quot;Submit&quot;}</stringValue>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <description>Use this to present a form for the lead to fill out for a sales team to connect with them.</description>
+    <environments>Default</environments>
+    <interviewLabel>Present Form {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Present Form</label>
+    <processMetadataValues>
+        <name>BuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>CanvasMode</name>
+        <value>
+            <stringValue>AUTO_LAYOUT_CANVAS</stringValue>
+        </value>
+    </processMetadataValues>
+    <processMetadataValues>
+        <name>OriginBuilderType</name>
+        <value>
+            <stringValue>LightningFlowBuilder</stringValue>
+        </value>
+    </processMetadataValues>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>0</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Assign_Details</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <description>Show this to the user.</description>
+        <name>Form</name>
+        <apexClass>AsaLeadFormData</apexClass>
+        <dataType>Apex</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>This is the messaging session id for the conversation.</description>
+        <name>Messaging_Session_Id</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

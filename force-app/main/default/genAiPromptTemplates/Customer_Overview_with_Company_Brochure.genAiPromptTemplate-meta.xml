@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <description>Generates a customer overview using an Account record and a single company brochure file</description>
+    <developerName>Customer_Overview_with_Company_Brochure</developerName>
+    <masterLabel>Customer Overview with Company Brochure</masterLabel>
+    <templateVersions>
+        <content>You are an internal Salesforce assistant helping users understand customer and company context.
+
+Your task is to generate a clear, factual, and concise overview using only the provided Salesforce records and the provided company brochure file.
+Do not infer, assume, or invent any information beyond what is available in the inputs.
+
+Instructions:
+Use professional and neutral language.
+Write for internal users such as sales representatives or support agents.
+Avoid predictions, recommendations, or speculative statements.
+
+Generate the overview using the following structure:
+
+Account Overview:
+Summarize the customer using the account name {!$Input:Account.Name} and account type if available.
+Mention the industry and account context only if present on the account record.
+
+Company Brochure Summary:
+Using the provided company brochure file {!$Input:File.Title}, summarize the company’s background, offerings, and positioning strictly based on the content available in the file.
+Do not quote verbatim unless necessary.
+Do not assume information that is not present in the file.
+
+Opportunities Summary:
+If opportunity records are provided, summarize the general sales activity related to {!$RelatedList:Account.Opportunities.Records} at a high level.
+Avoid forecasting or probability analysis.
+
+Cases Summary:
+If case records are provided, summarize the general nature and current status of support cases related to {!$RelatedList:Account.Cases.Records}
+
+Conclusion:
+Provide a short neutral closing statement indicating this overview is based on current Salesforce records and the provided company brochure.
+
+Generate the overview using only the inputs provided.
+
+</content>
+        <inputs>
+            <apiName>Account</apiName>
+            <definition>SOBJECT://Account</definition>
+            <masterLabel>Account</masterLabel>
+            <referenceName>Input:Account</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>File</apiName>
+            <definition>SOBJECT://ContentDocument</definition>
+            <masterLabel>File</masterLabel>
+            <referenceName>Input:File</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultVertexAIGemini20FlashLite001</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>invocable://getRelatedList</definition>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>parentRecordId</parameterName>
+                <valueExpression>{!$Input:Account.Id}</valueExpression>
+            </parameters>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>relatedListName</parameterName>
+                <valueExpression>Opportunities</valueExpression>
+            </parameters>
+            <referenceName>RelatedList:Account.Opportunities.Records</referenceName>
+        </templateDataProviders>
+        <templateDataProviders>
+            <definition>invocable://getRelatedList</definition>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>parentRecordId</parameterName>
+                <valueExpression>{!$Input:Account.Id}</valueExpression>
+            </parameters>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>relatedListName</parameterName>
+                <valueExpression>Cases</valueExpression>
+            </parameters>
+            <referenceName>RelatedList:Account.Cases.Records</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

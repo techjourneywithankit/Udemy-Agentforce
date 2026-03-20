@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <developerName>Car_Rental_Billing_Support</developerName>
+    <masterLabel>Car Rental Billing Support</masterLabel>
+    <templateVersions>
+        <content>Your role is to answer questions about car rental billing and payment matters including disputes, refunds, chargebacks, late fees, and damage charges.
+
+Here is the customer&apos;s question:
+{!$Input:Question}
+
+Use the following Knowledge Articles to answer:
+{!$EinsteinSearch:KA_Car_Rental_Billing_Support_1Cx_jxh23ed29b4.results}
+
+Only use the provided Knowledge content.
+If the answer is not found in the articles, politely inform the customer that the information is outside your current scope.
+
+Maintain a professional, empathetic, and helpful tone.
+
+</content>
+        <inputs>
+            <apiName>Question</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Question</masterLabel>
+            <referenceName>Input:Question</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>invocable://getEinsteinRetrieverResults/KA_Car_Rental_Billing_Support_1Cx_jxh23ed29b4</definition>
+            <description>KA_Car_Rental_Billing_Support</description>
+            <label>KA_Car_Rental_Billing_Support</label>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>searchText</parameterName>
+                <valueExpression>{!$Input:Question}</valueExpression>
+            </parameters>
+            <referenceName>EinsteinSearch:KA_Car_Rental_Billing_Support_1Cx_jxh23ed29b4</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

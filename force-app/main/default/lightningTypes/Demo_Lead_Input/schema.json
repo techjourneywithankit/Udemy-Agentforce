@@ -1,0 +1,5 @@
+{
+  "title" : "Demo Lead Input",
+  "description" : "",
+  "lightning:type" : "@apexClassType/c__LeadBooking$LeadRequest"
+}

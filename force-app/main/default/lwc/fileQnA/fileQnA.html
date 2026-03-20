@@ -1,0 +1,73 @@
+<template>
+    <lightning-card title="File QnA">
+
+        <div class="slds-m-around_medium">
+             <div class="slds-m-bottom_medium">
+                <lightning-file-upload
+                    label="Upload File"
+                    name="fileUpload"
+                    accept={acceptedFormats}
+                    onuploadfinished={handleUploadFinished}>
+                </lightning-file-upload>
+                <template lwc:if={fileUploaded}>
+                     <div class="slds-m-top_small slds-text-color_success">
+                        <lightning-icon icon-name="utility:success" size="x-small" alternative-text="Success"></lightning-icon>
+                        File uploaded successfully
+                    </div>
+                </template>
+             </div>
+        </div>
+
+              <!-- Question Input Section -->
+            <div class="slds-m-bottom_medium">
+                <lightning-textarea
+                    label="Ask a Question"
+                    value={userQuestion}
+                    onchange={handleQuestionChange}
+                    placeholder="Enter your question about the uploaded file..."
+                    max-length="5000">
+                </lightning-textarea>
+            </div>
+
+                     <!-- Submit Button -->
+            <div class="slds-m-bottom_medium">
+                <lightning-button
+                    variant="brand"
+                    label="Get Answer"
+                    title="Get Answer"
+                    onclick={handleSubmit}
+                    disabled={isSubmitDisabled}
+                    class="slds-m-right_x-small">
+                </lightning-button>
+                <lightning-button
+                    variant="neutral"
+                    label="Clear"
+                    title="Clear"
+                    onclick={handleClear}
+                    disabled={isLoading}>
+                </lightning-button>
+            </div>
+                       <!-- Loading Spinner -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+              <!-- Answer Display Section -->
+            <template lwc:if={hasAnswer}>
+                <div class="slds-m-top_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Answer:</h3>
+                    <div class="answer-container">
+                        <lightning-formatted-rich-text value={answer}></lightning-formatted-rich-text>
+                    </div>
+                </div>
+            </template>
+
+                  <!-- Error Display -->
+            <template lwc:if={hasError}>
+                <div class="slds-m-top_medium">
+                    <lightning-icon icon-name="utility:error" size="small" alternative-text="Error" class="slds-text-color_error"></lightning-icon>
+                    <span class="slds-text-color_error slds-m-left_x-small">{errorMessage}</span>
+                </div>
+            </template>
+    </lightning-card>
+</template>

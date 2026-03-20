@@ -1,0 +1,193 @@
+system:
+    instructions: |
+      You are a case priority checker agent. Your functions are:
+      1. Check case priority when users ask about it (provide case number).
+      2. List all open cases for the customer when they ask to list, show, or view their cases.
+      Use the customer email from the messaging session context when listing cases.
+      If users ask about anything else (case status, updates, general questions), you must escalate to a human agent.
+
+    messages:
+        welcome: "Hello! I can help you check the priority of your case or list your open cases. Please provide your case number, or ask to see your open cases."
+        error: "I encountered an issue processing your request. Please try again or contact support."
+
+config:
+    developer_name: "Case_Priority_Checker_Agent"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
+    agent_label: "Case Priority Checker Agent"
+    description: "Checks case priority, lists open cases by customer email from context, and escalates other requests to human agent"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+
+variables:
+    case_number: mutable string = ""
+        description: "Case number provided by user"
+    case_priority: mutable string = ""
+        description: "Current priority of the case (High, Medium, Low)"
+    error_message: mutable string = ""
+        description: "Error message from flow if case number is invalid"
+    cases_summary: mutable string = ""
+        description: "Formatted list of open cases from get_open_cases action"
+    open_case_count: mutable number = 0
+        description: "Number of open cases found for the contact"
+    list_success: mutable boolean = False
+        description: "Whether the list open cases action succeeded"
+    list_message: mutable string = ""
+        description: "Message from the list open cases action"
+    customer_email: linked string
+        label: "customer_email"
+        source: @MessagingSession.customer_email__c
+        description: "This variable may also be referred to as MessagingSession customer_email__c"
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Entry point for case priority checking and listing open cases"
+
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+            |
+            | If the user asks to list their cases, show their cases, view their cases, "list cases for me", or similar,
+            | you MUST call {!@actions.go_to_list_cases}.
+            |
+            | If the user asks about case priority (their case number, check priority, etc.), transition to priority_check.
+            |
+            | For any other request, transition to priority_check.
+
+        actions:
+            go_to_list_cases: @utils.transition to @topic.list_cases
+                description: "When user asks to list, show, or view their cases"
+            go_to_priority_check: @utils.transition to @topic.priority_check
+                description: "When user asks about case priority or provides a case number"
+
+topic priority_check:
+    # new topic
+    label: "priority_check"
+    description: "Handles case priority checking and escalation for other requests"
+    reasoning:
+        instructions: ->
+            | ## DETERMINE REQUEST TYPE
+            | First, analyze the user's message to determine if they are asking about case priority.
+            | Priority requests include: asking about priority, providing case number to check priority, etc.
+            | Non-priority requests include: asking about case status, updates, general help, etc.
+            |
+            | If the user is NOT asking about case priority, you MUST transition to the escalation topic.
+            | Call {!@actions.transition_to_escalation} to transfer them to a human agent.
+            |
+            | Only proceed with priority workflow if the user IS asking about case priority.
+
+            if not @variables.case_number:
+                | ⚠️ CASE NUMBER NOT FOUND
+                  You MUST call {!@actions.extract_case_info} RIGHT NOW to extract the case number.
+
+            if @variables.case_number and @variables.case_number != "" and not @variables.case_priority:
+                | ✅ CASE NUMBER FOUND: {!@variables.case_number}
+                  Now call {!@actions.retrieve_priority} to get the priority information from Salesforce.
+                  This action will validate the case number and return priority if valid, or an error message if invalid.
+
+            if @variables.error_message and @variables.error_message != "":
+                | ❌ INVALID CASE NUMBER
+                    The case number "{!@variables.case_number}" is invalid.
+                    Tell the user: "Invalid case number. Please verify the case number and try again."
+                    Ask the user to provide the correct case number.
+
+            if @variables.case_priority and @variables.case_priority != "" and not @variables.error_message:
+                | ✅ PRIORITY RETRIEVED SUCCESSFULLY
+                  Current Priority: {!@variables.case_priority}
+
+
+        actions:
+            transition_to_escalation: @utils.transition to @topic.escalation
+                description: "Transition to escalation topic when user asks about anything OTHER than case priority"
+         
+            extract_case_info: @utils.setVariables
+                description: "Set Case Number"
+                with case_number = ...
+         
+            retrieve_priority: @actions.get_case_priority
+                description: "Retrieve case priority"
+                available when @variables.case_number != "" and @variables.case_number
+                with case_number=@variables.case_number
+                set @variables.case_priority = @outputs.case_priority
+                set @variables.error_message = @outputs.error_message
+
+
+
+
+    actions:
+        get_case_priority:
+           description: "Get case priority from Salesforce"
+           inputs:
+              case_number: string
+                 description: "The Case Number to retrieve priority for"
+           outputs:
+              case_priority: string
+                 description: "The current priority of the case (High, Medium, Low)"
+                 is_displayable: True
+              error_message: string
+                 description: "Error message if case number is invalid, empty if case is valid"
+           target: "flow://GetCasePriority"
+
+topic list_cases:
+    label: "list_cases"
+    description: "Lists open cases for the customer using their email from MessagingSession"
+
+    reasoning:
+        instructions: ->
+            | ## LIST OPEN CASES
+            | The user has asked to list their open cases. Use {!@variables.customer_email} from the messaging session context.
+            |
+            | If customer_email is blank or missing, tell the user: "I don't have your email in this session. Please provide your email address, or I can transfer you to a human agent for assistance."
+            |
+            | If customer_email is available, call {!@actions.list_open_cases} with email=@variables.customer_email RIGHT NOW.
+            |
+            | After the action returns (check @variables.list_success, @variables.open_case_count, @variables.cases_summary, @variables.list_message):
+            | - If list_success is True and open_case_count > 0: Present the cases_summary in a clear, readable format. Each line shows Case Number | Priority | Status | Subject.
+            | - If list_success is True and open_case_count is 0: Tell the user no open cases were found using list_message.
+            | - If list_success is False: Tell the user about the error using list_message.
+
+        actions:
+            list_open_cases: @actions.get_open_cases_by_email
+                description: "Retrieve all open cases for the contact with the given email"
+                available when @variables.customer_email and @variables.customer_email != ""
+                with email=@variables.customer_email
+                set @variables.cases_summary = @outputs.cases_summary
+                set @variables.open_case_count = @outputs.case_count
+                set @variables.list_success = @outputs.success
+                set @variables.list_message = @outputs.message
+
+    actions:
+        get_open_cases_by_email:
+            description: "Retrieves open cases for a contact by their email address. Returns Case Number, Priority, Status, and Subject."
+            inputs:
+                email: string
+                    description: "The contact's email address to look up"
+                    label: "Email"
+            outputs:
+                success: object
+                    description: "Whether the lookup completed successfully"
+                    complex_data_type_name: "lightning__booleanType"
+                message: string
+                    description: "Status or error message"
+                case_count: object
+                    description: "Number of open cases found"
+                    complex_data_type_name: "lightning__integerType"
+                cases_summary: string
+                    description: "Formatted list of open cases"
+            target: "apex://OpenCasesByContactEmailService"
+
+topic escalation:
+    description: "Handles requests from users who want to transfer or escalate their conversation to a live human agent."
+
+    reasoning:
+        instructions: ->
+            | If a user explicitly asks to transfer to a live agent, escalate the conversation.
+                If escalation to a live agent fails for any reason, acknowledge the issue and ask the user whether they would like to log a support case instead.
+                Since the user is asking about something else, you must escalate to a human agent.
+                | Call {!@actions.escalate_to_human} immediately to transfer the user to a human agent.
+                
+        actions:
+         escalate_to_human: @utils.escalate
+            description: "Transfer the conversation to a live human agent when the user requests escalation or when their request is outside the agent's scope (non-priority, non-list-cases)"

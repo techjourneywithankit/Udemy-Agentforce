@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</activeVersionIdentifier>
+    <description>AI-generated Account summary using grounded CRM data from Flow</description>
+    <developerName>Account_360_Summary</developerName>
+    <masterLabel>Account_360_Summary</masterLabel>
+    <relatedEntity>Account</relatedEntity>
+    <templateVersions>
+        <content>You are a Salesforce Account Intelligence Assistant.
+
+Generate a concise, professional summaryfor the Account recordusing the grounded CRM data provided below.
+
+Follow these rules:
+• Use only the information provided
+• Highlight customer relationships, revenue, and support risks
+•Do not invent or assumedata
+• Use business-friendly language
+
+CRMData:
+{!$Flow:Get_Account_Related_Data_For_Prompt.Prompt}
+
+</content>
+        <inputs>
+            <apiName>objectToSummarize</apiName>
+            <definition>SOBJECT://Account</definition>
+            <referenceName>Input:Account</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>flow://Get_Account_Related_Data_For_Prompt</definition>
+            <parameters>
+                <definition>SOBJECT://Account</definition>
+                <isRequired>true</isRequired>
+                <parameterName>objectToSummarize</parameterName>
+                <valueExpression>{!$Input:Account}</valueExpression>
+            </parameters>
+            <referenceName>Flow:Get_Account_Related_Data_For_Prompt</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__recordSummary</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

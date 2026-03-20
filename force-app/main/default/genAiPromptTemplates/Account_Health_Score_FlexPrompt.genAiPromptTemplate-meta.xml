@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_2</activeVersionIdentifier>
+    <description>Generates Account Health summary using Apex-calculated score</description>
+    <developerName>Account_Health_Score_FlexPrompt</developerName>
+    <masterLabel>Account_Health_Score_FlexPrompt</masterLabel>
+    <templateVersions>
+        <content>You are a Salesforce Relationship Intelligence Agent.
+
+You are provided with:
+1) A calculated Account Health Score from Apex
+2) A record snapshot containing the Account and its related CRM records
+
+Your job is to analyze all three sources and produce a concise, business-ready account summary.
+
+Account Health Score:
+{!$Apex:AccountScoreFlexGrounding.Prompt}
+
+CRM Record Snapshot:
+{!$RecordSnapshot:account.Snapshot}
+
+Instructions:
+• Use the Account Health Score to assess overall relationship strength
+• Use related records (Cases, Opportunities, Contacts) from the record snapshot to explain why the score makes sense
+• Identify financial strength, sales momentum, and support risk
+• Highlight urgent risks such as open or escalated cases
+• Do not invent or assume data that is not in the snapshot or the score
+• Write in professional, executive-friendly language
+</content>
+        <inputs>
+            <apiName>account</apiName>
+            <definition>SOBJECT://Account</definition>
+            <masterLabel>Account</masterLabel>
+            <referenceName>Input:account</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://AccountScoreFlexGrounding</definition>
+            <parameters>
+                <definition>SOBJECT://Account</definition>
+                <isRequired>true</isRequired>
+                <parameterName>account</parameterName>
+                <valueExpression>{!$Input:account}</valueExpression>
+            </parameters>
+            <referenceName>Apex:AccountScoreFlexGrounding</referenceName>
+        </templateDataProviders>
+        <templateDataProviders>
+            <definition>invocable://getDataForGrounding</definition>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>recordId</parameterName>
+                <valueExpression>{!$Input:account.Id}</valueExpression>
+            </parameters>
+            <referenceName>RecordSnapshot:account</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_1</versionIdentifier>
+    </templateVersions>
+    <templateVersions>
+        <content>You are a Salesforce Relationship Intelligence Agent.
+
+You are provided with:
+1) A calculated Account Health Score from Apex
+2) A record snapshot containing the Account and its related CRM records
+
+Your job is to analyze all three sources and produce a concise, business-ready account summary.
+
+Account Health Score:
+{!$Apex:AccountScoreFlexGrounding.Prompt}
+
+CRM Record Snapshot:
+{!$RecordSnapshot:account.Snapshot}
+
+Instructions:
+• Use the Account Health Score to assess overall relationship strength
+• Use related records (Cases, Opportunities, Contacts) from the record snapshot to explain why the score makes sense
+• Identify financial strength, sales momentum, and support risk
+• Highlight urgent risks such as open or escalated cases
+• Do not invent or assume data that is not in the snapshot or the score
+• Write in professional, executive-friendly language
+• Format the final response as HTML for display in a Salesforce Rich Text component.
+Formatting rules:
+• Use &lt;b&gt; tags for section headings
+• Use &lt;br&gt; for line breaks
+• Do NOT use tables
+• Do NOT use markdown
+• Do NOT use bullet points
+• Do NOT include &lt;html&gt;, &lt;body&gt;, or &lt;style&gt; tags
+</content>
+        <inputs>
+            <apiName>account</apiName>
+            <definition>SOBJECT://Account</definition>
+            <masterLabel>Account</masterLabel>
+            <referenceName>Input:account</referenceName>
+            <required>true</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <templateDataProviders>
+            <definition>apex://AccountScoreFlexGrounding</definition>
+            <parameters>
+                <definition>SOBJECT://Account</definition>
+                <isRequired>true</isRequired>
+                <parameterName>account</parameterName>
+                <valueExpression>{!$Input:account}</valueExpression>
+            </parameters>
+            <referenceName>Apex:AccountScoreFlexGrounding</referenceName>
+        </templateDataProviders>
+        <templateDataProviders>
+            <definition>invocable://getDataForGrounding</definition>
+            <parameters>
+                <definition>primitive://String</definition>
+                <isRequired>true</isRequired>
+                <parameterName>recordId</parameterName>
+                <valueExpression>{!$Input:account.Id}</valueExpression>
+            </parameters>
+            <referenceName>RecordSnapshot:account</referenceName>
+        </templateDataProviders>
+        <versionIdentifier>bOd/wkJ6TJ7ARCmOul2wTo+cQDnF20xJOM0IalsQvgM=_2</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

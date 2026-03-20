@@ -1,0 +1,116 @@
+system:
+    instructions: "You are a Case Priority recommendation agent. Your role is to analyze Case information and provide a Priority recommendation using the Prompt Template action"
+
+    messages:
+        welcome: "I analyze Case details to recommend the appropriate Priority level"
+        error: "I encountered an issue analyzing the Case. Please try again"
+
+config:
+    agent_label: "CasePriorityRecommendation"
+    developer_name: "CasePriorityRecommendation"
+    agent_type: "AgentforceEmployeeAgent"
+    description: "Analyzes Case details and recommends the appropriate Priority level using AI."
+
+language:
+    default_locale: "en_US"
+    additional_locales: "en_GB"
+
+variables:
+    case_subject: mutable string = ""
+        description: "Case Subject from Flow input (required)"
+    
+    case_description: mutable string = ""
+        description: "Case Description from Flow input"
+
+    recommended_priority: mutable string = ""
+        description: "AI-recommended Priority value (High, Medium, or Low)"
+
+    validation_passed: mutable boolean = False
+        description: "Whether all required Case details are available for priority recommendation"
+    
+    validation_information: mutable string = ""
+        description: "Human-readable validation information"
+
+start_agent topic_selector:
+    label: "Topic Selector"
+
+    description: "Entry point for Case Priority recommendation"
+
+    reasoning:
+        instructions: ->
+            | Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+
+        actions:
+            go_to_priority_recommendation: @utils.transition to @topic.priority_recommendation
+                description: "Analyze Case and recommend Priority"
+
+topic priority_recommendation:
+    label: "priority_recommendation"
+
+    description: "Analyzes Case details and recommends Priority using Prompt Template"
+
+    reasoning:
+        instructions: ->
+            | When invoked from a Flow with Case details:
+            | 1. Extract Case Subject, Description from the user message 
+            | 2. Store them in variables using {!@actions.store_case_details}
+            | 3. Validate that required fields are present before proceeding
+            | 4. Only after validation passes, run {!@actions.recommend_priority_action} action
+            | 5. Capture the recommended priority from the prompt response
+            | 6. Output the recommended priority value as your response message
+
+            | IMPORTANT: Case Subject is REQUIRED. Do not proceed without it.
+            | The prompt template will return "High", "Medium", or "Low" as a single word.
+            | Simply output this value as your message - do not add any additional text or explanation.
+
+            | Validate required fields before proceeding:
+            if not @variables.case_subject:
+                set @variables.validation_information = "Missing Case Subject"
+                set @variables.validation_passed = False
+                | ⚠️ ERROR: Case Subject is required to recommend Priority.
+                  Please provide the Case Subject before proceeding.
+            else:
+                set @variables.validation_passed = True
+
+            | Only proceed with recommendation if validation passed:
+            if not @variables.validation_passed:
+                | Do NOT call {!@actions.recommend_priority_action} yet.
+                  Return the validation error: {!@variables.validation_information}
+            
+            | If validation passed, the recommend_priority_action will be available.
+              Call it to get the priority recommendation.
+
+        actions:
+            store_case_details: @utils.setVariables
+                description: "Store Case details extracted from the user message"
+                with case_subject = ...
+                with case_description = ...
+
+
+
+            recommend_priority_action: @actions.Recommend_Priority
+                description: "Analyze Case details and recommend Priority (only available when Case Subject is provided)"
+                available when @variables.validation_passed and @variables.case_subject != ""
+                with "Input:caseSubject" = @variables.case_subject
+                with "Input:caseDescription" = @variables.case_description
+                set @variables.recommended_priority = @outputs.promptResponse
+
+
+    actions:
+        Recommend_Priority:
+            description: "Analyzes Case Subject and Description to recommend the appropriate Priority level (High, Medium, or Low)"
+            inputs:
+                #Input:<Field Api name>
+                "Input:caseSubject" : string
+                    description : "Case Subject text"
+                    is_required:True
+                "Input:caseDescription": string
+                    description: "Case Description text"
+                    is_required: False
+            outputs:
+                # Prompt Template output is always a promptResponse string
+                promptResponse: string
+                    description: "The recommended Priority value returned by the prompt template (High, Medium, or Low)"
+                    is_used_by_planner: True
+                    is_displayable: True
+            target: "generatePromptResponse://Recommend_Case_Priority"
