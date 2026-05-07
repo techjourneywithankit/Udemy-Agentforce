@@ -1,0 +1,105 @@
+# CasePriorityRecommender - Gated Prompt Template Invocation
+# Demonstrates invoking a Flex GenAi Prompt Template with TWO primitive-string inputs,
+# collected ONE AT A TIME before execution.
+#
+# The agent uses @variables + @utils.setVariables to capture the caseSubject and
+# caseDescription across conversation turns. The recommend_priority action is only
+# allowed to run once BOTH variables are populated.
+
+config:
+   developer_name: "CasePriorityRecommender"
+   agent_label: "CasePriorityRecommender"
+   agent_type: "AgentforceEmployeeAgent"
+   description: "Recommends a Case Priority (High, Medium, Low) by invoking the Recommend_Case_Priority prompt template once both the subject and description are collected"
+
+variables:
+   case_subject: mutable string = ""
+      description: "The Case subject — collected from the user before running the prompt template"
+
+   case_description: mutable string = ""
+      description: "The Case description — collected from the user before running the prompt template"
+
+   recommended_priority: mutable string = ""
+      description: "The priority recommendation (High, Medium, or Low) returned by the prompt template"
+
+system:
+   messages:
+      welcome: "Hi! I can recommend a Case Priority. I'll ask you for the Case subject, then the description, and then give you a recommendation."
+      error: "Something went wrong while generating the priority recommendation."
+
+   instructions: "You are a concise support-operations assistant who helps users assess a Case's priority. Collect the subject first, then the description. Only generate a recommendation once both are captured."
+
+start_agent agent_router:
+   description: "Route the user to the priority recommender subagent"
+
+   reasoning:
+      instructions: |
+         Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+      actions:
+         go_to_priority_recommender: @utils.transition to @subagent.priority_recommender
+            description: "Hand off to the priority recommender subagent"
+
+subagent priority_recommender:
+   description: "Collects the Case subject and description one at a time, then calls the Recommend_Case_Priority prompt template"
+
+   actions:
+      recommend_priority:
+         description: "Calls the Recommend_Case_Priority Flex prompt template with the collected subject and description. Returns a single-word priority recommendation: High, Medium, or Low."
+         # The prompt template declares two primitive string inputs:
+         #   referenceName=Input:caseSubject     definition=primitive://String
+         #   referenceName=Input:caseDescription definition=primitive://String
+         # Primitive-typed template inputs are declared as plain `string` here
+         # (no complex_data_type_name needed — that's only for SObject/record inputs).
+         inputs:
+            "Input:caseSubject": string
+               description: "The Case subject — required"
+               is_required: True
+            "Input:caseDescription": string
+               description: "The Case description — required"
+               is_required: True
+         outputs:
+            promptResponse: string
+               description: "The recommended priority: High, Medium, or Low"
+               is_used_by_planner: True
+               is_displayable: True
+         target: "generatePromptResponse://Recommend_Case_Priority"
+
+   reasoning:
+      instructions: ->
+         |
+           Collect the Case subject and description one at a time. Do not run the priority recommendation until BOTH are captured.
+
+           Current progress:
+
+         if @variables.case_subject:
+            | - Subject: {!@variables.case_subject}
+         else:
+            | - Subject: Not provided
+
+         if @variables.case_description:
+            | - Description: {!@variables.case_description}
+         else:
+            | - Description: Not provided
+
+         if @variables.recommended_priority:
+            | - Recommended Priority: {!@variables.recommended_priority}
+         else:
+            | - Recommended Priority: Not yet generated
+
+         | Your task:
+           1. If case_subject is empty, ask the user for the Case subject. Do not ask about the description yet.
+           2. Once case_subject is captured and case_description is empty, ask the user for the Case description.
+           3. Only AFTER both case_subject and case_description are populated AND recommended_priority is empty, call {!@actions.recommend_priority} with the two collected variables.
+           4. After the action runs, store the result in @variables.recommended_priority and tell the user: "Based on the subject and description, the recommended Case Priority is <High|Medium|Low>." Also briefly restate the subject and description you used.
+           5. Never ask for the description before the subject is captured, and never run the recommendation before both are captured.
+      actions:
+         set_case_subject: @utils.setVariables
+            with case_subject=...
+
+         set_case_description: @utils.setVariables
+            with case_description=...
+
+         recommend_priority: @actions.recommend_priority
+            with "Input:caseSubject"=@variables.case_subject
+            with "Input:caseDescription"=@variables.case_description
+            set @variables.recommended_priority = @outputs.promptResponse

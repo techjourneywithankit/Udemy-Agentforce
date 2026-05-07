@@ -1,0 +1,180 @@
+system:
+   messages:
+      welcome: "Welcome to Balance Transfer. I can help you securely move funds between your accounts. Let's get started."
+      # Error message shown when system-level errors occur
+      error: "I ran into a technical issue while processing your balance transfer. The transfer was not completed. Please try again or reach out to support."
+
+   instructions: "You are a banking balance transfer agent. Security and accuracy are critical. Always validate information before processing transfers. Never proceed if there are any doubts or errors."
+
+
+config:
+    developer_name: "BalanceTransfer"
+    agent_type: "AgentforceEmployeeAgent"
+    agent_label: "BalanceTransfer"
+    description: "Handles balance transfers between accounts with comprehensive validation and error handling"
+
+variables:
+   source_account: mutable string = ""
+      description: "Account to transfer from"
+
+   destination_account: mutable string = ""
+      description: "Account to transfer to"
+
+   transfer_amount: mutable number = 0
+      description: "Amount to transfer"
+
+   source_balance: mutable number = 0
+      description: "Balance of source account"
+      
+   transfer_limit: mutable number = 10000
+      description: "Maximum allowed transfer amount"
+
+   validation_passed: mutable boolean = False
+      description: "Whether all validations passed"
+
+   validation_information: mutable string = ""
+      description: "Human readable validation information"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+    all_additional_locales: False
+
+start_agent agent_router:
+   description: "Welcome users and begin a secure balance transfer"
+
+   reasoning:
+      instructions:->
+         | This agent ONLY handles balance transfers. Regardless of what the user
+           says (including short replies like "ok", "hi", "yes"), your single job
+           is to immediately invoke {!@actions.start_transfer} to hand off to the
+           balance transfer subagent. Do NOT respond with a generic greeting or
+           ask "how can I help?" — the welcome message has already been shown.
+           Transition to the subagent now.
+      actions:
+         start_transfer: @utils.transition to @subagent.balance_transfer
+            description: "Begin the balance transfer with validation and error handling"
+
+subagent balance_transfer:
+    description: "Handles balance transfers between accounts with validation"
+    actions:
+        get_account_balance:
+         description: "Gets the current balance for an account"
+         inputs:
+            account_number: string
+               description: "The account number to check the balance for"
+               is_required: True
+         outputs:
+            balance: number
+               description: "Current account balance as a monetary amount"
+            account_valid: boolean
+               description: "Indicates whether the account number is valid and active"
+         target: "flow://Get_Account_Balance"
+
+        execute_transfer:
+         description: "Executes the balance transfer between accounts"
+         inputs:
+            from_Account: string
+               description: "Source account number to transfer funds from"
+               is_required: True
+            to_Account: string
+               description: "Destination account number to transfer funds to"
+               is_required: True
+            amount: number
+               description: "Amount of money to transfer (must be positive and within limits)"
+               is_required: True
+         outputs:
+            success: boolean
+               description: "Indicates whether the transfer was completed successfully"
+            transaction_id: string
+               description: "Unique transaction identifier for the completed transfer"
+         target: "flow://Execute_Transfer"
+    reasoning:
+            instructions: ->
+                 |  You are guiding the customer through a balance transfer.
+                    Collect the inputs ONE AT A TIME in a friendly, conversational way.
+                    Do NOT ask for multiple pieces of information in a single turn.
+                    As soon as the customer provides a value, store it using {!@actions.store_details}.
+
+                 if not @variables.source_account:
+                    set @variables.validation_passed = False
+                 | STEP 1 of 3: Ask ONLY for the source account number — the account
+                   they want to transfer funds FROM. Do not mention the destination
+                   account or the amount yet. Once they reply, store the value with
+                   {!@actions.store_details} and then move on to the next step.
+                   Do NOT proceed with the transfer.
+
+                 if @variables.source_account and not @variables.destination_account:
+                    set @variables.validation_passed = False
+                    | STEP 2 of 3: Great, you have the source account
+                        ({!@variables.source_account}). Now ask ONLY for the destination
+                        account number — the account they want to transfer funds TO.
+                        Do not ask about the amount yet. Once they reply, store the value
+                        with {!@actions.store_details} and then move on to the next step.
+                        Do NOT proceed with the transfer.
+
+                 if @variables.source_account and @variables.destination_account and @variables.transfer_amount <= 0:
+                    set @variables.validation_passed = False
+                    | STEP 3 of 3: You have both accounts. Now ask ONLY how much they
+                        would like to transfer from {!@variables.source_account} to
+                        {!@variables.destination_account}. Once they reply, store the
+                        value with {!@actions.store_details}.
+                        Do NOT proceed with the transfer.
+                
+                if @variables.source_account and @variables.destination_account and @variables.transfer_amount > 0:
+                    set @variables.validation_passed = True
+
+                if @variables.source_account == @variables.destination_account and @variables.source_account:
+                    set @variables.validation_information = "Source and destination are the same"
+                    set @variables.validation_passed = False
+                    | ⚠️ STOP: The source and destination accounts are identical.
+                        Apologize, then ask the customer for a different destination account.
+                        Do NOT proceed with the transfer.
+
+                if @variables.transfer_amount > @variables.transfer_limit:
+                    set @variables.validation_information = "Amount exceeds transfer limit"
+                    set @variables.validation_passed = False
+                    | ⚠️ STOP: The requested amount (${!@variables.transfer_amount}) exceeds
+                        the maximum transfer limit of ${!@variables.transfer_limit}.
+                        Inform the customer and ask if they'd like to:
+                        1. Transfer the maximum allowed amount (${!@variables.transfer_limit})
+                        2. Split into multiple transfers
+                        3. Contact support for higher limits
+                        Do NOT proceed with the transfer.
+                
+                if @variables.source_account and @variables.transfer_amount > 0 and not @variables.source_balance:
+                    run @actions.get_account_balance 
+                        with account_number = @variables.source_account
+                        set @variables.source_balance = @outputs.balance
+
+                if @variables.source_balance > 0 and @variables.source_balance < @variables.transfer_amount:
+                    set @variables.validation_information = "Insufficient funds"
+                    set @variables.validation_passed = False
+                    | ⚠️ STOP: Insufficient funds in the source account.
+                        - Available balance: ${!@variables.source_balance}
+                        - Requested transfer: ${!@variables.transfer_amount}
+                        - Shortfall: ${!@variables.transfer_amount-@variables.source_balance}
+                        Ask if they'd like to transfer a smaller amount.
+                        Do NOT proceed with the transfer.
+                    
+                | If {!@variables.validation_passed} is False, return {!@variables.validation_information} to the user
+                  and do NOT proceed with the transfer.
+                
+                 If {!@variables.validation_passed} is True, confirm the details with the customer
+                 and execute the transfer using {!@actions.execute_transfer}.
+
+            actions:
+                get_account_balance: @actions.get_account_balance
+                    with account_number=...
+                    set @variables.source_balance = @outputs.balance
+
+                execute_transfer: @actions.execute_transfer
+                    available when @variables.validation_passed
+                    with from_Account=@variables.source_account
+                    with to_Account=@variables.destination_account
+                    with amount=@variables.transfer_amount
+                                
+                store_details: @utils.setVariables
+                    with source_account = ...
+                    with destination_account = ...
+                    with transfer_amount = ...

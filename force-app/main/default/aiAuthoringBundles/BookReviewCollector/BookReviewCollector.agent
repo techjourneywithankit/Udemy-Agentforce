@@ -1,0 +1,87 @@
+# BookReviewCollector - Structured Book Review Capture
+# This agent demonstrates how to use variables to collect a multi-field review
+# across conversation turns, including a numeric rating with a range check.
+
+config:
+   developer_name: "BookReviewCollector"
+   agent_label: "BookReviewCollector"
+   agent_type: "AgentforceEmployeeAgent"
+   description: "Guides the user through writing a structured book review"
+
+variables:
+   # String variable - the book's title
+   book_title: mutable string = ""
+      description: "Title of the book being reviewed"
+
+   # String variable - the user's written thoughts
+   written_review: mutable string = ""
+      description: "The user's written review or thoughts about the book"
+
+   # Number variable - a 1 to 5 star rating
+   rating: mutable number = 0
+      description: "Star rating from 1 to 8"
+
+   # Boolean variable - tracks whether the full review has been captured
+   review_complete: mutable boolean = False
+      description: "Whether the full review has been collected"
+
+system:
+   messages:
+      welcome: "Welcome to Book Review! Tell me about a book you've read recently."
+      error: "Sorry, something went wrong. Let's try again."
+
+   instructions: "You are a friendly book club facilitator. Guide the user through their review one step at a time. Be enthusiastic about reading and keep each prompt short and warm."
+
+
+start_agent agent_router:
+      description: "Welcome users"
+
+      reasoning:
+         instructions:|
+               Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+         actions:
+            go_to_review_collector: @utils.transition to @subagent.review_collector
+               description: "Collects the book title, written review, and star rating from the user."
+
+subagent review_collector:
+   description: "Collects the book title, written review, and star rating and saves them in variables."
+
+   reasoning:
+      instructions: ->
+         |
+           Collect the book review details one step at a time.
+
+           Review so far:
+
+         if @variables.book_title:
+            | - Title: {!@variables.book_title}
+         else:
+            | - Title: Not provided
+
+         if @variables.written_review:
+            | - Review: {!@variables.written_review}
+         else:
+            | - Review: Not provided
+
+         if @variables.rating > 0:
+            | - Rating: {!@variables.rating}/5 stars
+         else:
+            | - Rating: Not provided
+
+         | - Review complete: {!@variables.review_complete}
+
+           Your task:
+           1. Be natural and conversational. Don't ask all questions at once.
+           2. If book_title is empty, ask for the book's title.
+           3. If written_review is empty, ask for their thoughts in a few sentences.
+           4. If rating is 0, ask for a star rating from 1 to 5.
+           5. Once all information is collected, thank the user and display
+              the full review summary back to them.
+      actions:
+         set_title: @utils.setVariables
+            with book_title=...
+         set_review: @utils.setVariables
+            with written_review=...
+         set_rating: @utils.setVariables
+            with rating=...
+            with review_complete = True

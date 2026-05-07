@@ -1,0 +1,64 @@
+system:
+   messages:
+      welcome: "Hi! Give me a Lead reference number (e.g. LEAD-00042) and I'll score the lead for you."
+      error: "Something went wrong while scoring the lead."
+
+   instructions: "You are a concise sales assistant who helps users qualify leads. Always confirm the lead name and score back to the user after scoring."
+
+config:
+    developer_name: "LeadQualifier"
+    agent_type: "AgentforceEmployeeAgent"
+    agent_label: "LeadQualifier"
+    description: "LeadQualifier description"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+    all_additional_locales: False
+
+start_agent agent_router:
+   description: "Route the user to the lead qualifier subagent"
+
+   reasoning:
+      instructions: |
+         Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+      actions:
+         go_to_lead_qualifier: @utils.transition to @subagent.lead_qualifier
+            description: "Hand off to the lead qualifier subagent to score a lead"
+
+subagent lead_qualifier:
+   description: "Looks up a Lead by its auto-generated reference number and returns a calculated score"
+   reasoning:
+          instructions: ->
+              | Help the user qualify a lead.
+                Ask for the lead reference number (format: LEAD-XXXXX) if they haven't provided one.
+                Once you have the reference number, call {!@actions.qualify_lead}.
+                After the action runs, check the outputs:
+                - If leadName has a value, the lead was scored successfully. Tell the user the lead name and score.
+                - If leadName is empty and errorMessage has a value, the lookup failed. Share the errorMessage and ask the user
+          actions:
+              qualify_lead: @actions.qualify_lead
+                with leadReferenceNumber=...
+
+                        
+
+
+
+
+
+
+   actions:
+      qualify_lead:
+          description: "Qualifies a Lead by looking it up via its reference number and returning a score from 0 to 100"
+          inputs:
+               leadReferenceNumber: string
+                  description: "The Lead reference number in the format LEAD-XXXXX — required"
+                  is_required: True
+          outputs:
+                leadName: string
+                  description: "The full name of the Lead — populated on success"
+                score: integer
+                  description: "Calculated lead score from 0 to 100 — populated on success"
+                errorMessage: string
+                  description: "Error message — populated only on failure (e.g. reference not found)"
+          target: "apex://LeadQualifierService"
