@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lead_Reference_Number__c</fullName>
+    <label>Lead Reference Number</label>
+    <description>Human-readable auto-generated reference number used by the LeadQualifier agent to look up the Lead without requiring the 18-char record Id.</description>
+    <type>AutoNumber</type>
+    <displayFormat>LEAD-{00000}</displayFormat>
+    <startingNumber>1</startingNumber>
+    <externalId>true</externalId>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+</CustomField>
