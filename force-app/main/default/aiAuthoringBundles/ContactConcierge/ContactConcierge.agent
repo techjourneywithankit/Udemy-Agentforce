@@ -1,0 +1,166 @@
+system:
+    instructions: "You are the Contact Concierge, an internal assistant that helps users look up Contact records by email and create new Contacts when none exist. Stay strictly on this task and politely decline anything else."
+
+    messages:
+        welcome: "Hi! I'm the Contact Concierge. Share an email address and I'll check whether a Contact already exists or help you create a new one."
+        error: "Something went wrong while handling your request."
+
+config:
+    developer_name: "ContactConcierge"
+    agent_type: "AgentforceEmployeeAgent"
+    agent_label: "ContactConcierge"
+    description: "ContactConcierge description"
+
+variables:
+    email: mutable string = ""
+        description: "Email address used for contact lookup"
+    lookup_done: mutable boolean = False
+        description: "Whether the lookup action has already run for the current email"
+    contact_found: mutable boolean = False
+        description: "Whether an existing Contact was located for the supplied email"
+    contact_name: mutable string = ""
+        description: "Name of the contact returned by the lookup, when found"
+    lastname: mutable string = ""
+        description: "Last name supplied by the user for new contact creation"
+    phone: mutable string = ""
+        description: "Phone number supplied by the user for new contact creation"
+    contact_created: mutable boolean = False
+        description: "Whether contact creation succeeded"
+    create_message: mutable string = ""
+        description: "Result message returned by the contact creation action"
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+    all_additional_locales: False
+
+start_agent agent_router:
+    description: "Route the user into the contact management subagent"
+
+    reasoning:
+        instructions: |
+            Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+        actions:
+            go_to_contact_management: @utils.transition to @subagent.contact_management
+                description: "Hand off to the contact management subagent"
+
+
+subagent contact_management:
+    label: "Contact Management"
+    description: "Drives the email lookup, optional new-contact data collection, and Apex-backed contact creation."
+    actions:
+        validate_contact:
+            description: "Look up an existing Contact by email address."
+            inputs:
+                email: string
+                    description: "Email address to search for"
+                    is_required: True
+            outputs:
+                contact_found: boolean
+                    description: "True when a Contact with the supplied email exists"
+                contact_id: string
+                    description: "Salesforce Id of the matched Contact, when found"
+                contact_name: string
+                    description: "Formatted name of the matched Contact, when found"
+            target: "flow://ValidateContactByEmail"
+        
+        create_contact:
+            description: "Create a new Contact record using the supplied last name, email, and phone."
+            inputs:
+                lastname: string
+                    description: "Last name for the new Contact"
+                    is_required: True
+                email: string
+                    description: "Email address for the new Contact"
+                    is_required: True
+                phone: string
+                    description: "Phone number for the new Contact"
+                    is_required: False
+            outputs:
+                new_contact_id: string
+                    description: "Salesforce Id of the newly created Contact, when creation succeeds"
+                success: boolean
+                    description: "True when the Contact was created successfully"
+                message: string
+                    description: "Confirmation or error message describing the creation result"
+            target: "apex://ContactCreationService"
+
+    reasoning:
+            instructions: ->
+                 if @variables.contact_created:
+                    | Tell the user the contact was created successfully and share: {!@variables.create_message}.
+                      Ask whether they want to start a new lookup. If yes, call {!@actions.start_over}.
+                
+                 if @variables.lookup_done and @variables.contact_found:
+                    | Tell the user: "I found an existing contact."
+                        - Name: {!@variables.contact_name}
+                        - Email: {!@variables.email}
+                        Ask if they would like to look up another contact. If yes, call {!@actions.start_over}.
+
+                
+                    | ## Status
+                        - Email: {!@variables.email}
+                        - Lookup done: {!@variables.lookup_done}
+                        - Contact found: {!@variables.contact_found}
+                        - Contact name: {!@variables.contact_name}
+                        - Last name: {!@variables.lastname}
+                        - Phone: {!@variables.phone}
+                        - Contact created: {!@variables.contact_created}
+
+                        ## Rules
+                        - Help only with contact lookup or contact creation. Politely decline other requests.
+                        - Never invent values. Ask the user for any data you do not yet have.
+
+                 if not @variables.email:
+                    | Ask the user for an email address. When they provide one, call {!@actions.store_email} so it is captured in state.
+
+                 if @variables.email and not @variables.lookup_done:
+                     | Email is captured but the lookup has not run yet. Call {!@actions.do_lookup} now.
+
+                 if @variables.lookup_done and not @variables.contact_found and not @variables.contact_created:
+                    | Tell the user no contact was found for {!@variables.email} and offer to create one.
+                      Ask for the last name and phone number if either is still missing.
+                      When the user provides last name and phone, call {!@actions.store_contact_details}.
+                      Once both values are present in state, call {!@actions.create_new_contact}.
+
+            actions:
+                do_lookup: @actions.validate_contact
+                    description: "Perform the contact lookup using the provided email address"
+                    available when @variables.email and not @variables.lookup_done
+                    with email = @variables.email
+                    set @variables.contact_found = @outputs.contact_found
+                    set @variables.contact_name = @outputs.contact_name
+                    set @variables.lookup_done = True
+
+                create_new_contact: @actions.create_contact
+                    description: "Create the Contact record using the collected details"
+                    available when @variables.lookup_done and not @variables.contact_found and @variables.lastname and @variables.phone
+                    with lastname = @variables.lastname
+                    with email = @variables.email
+                    with phone = @variables.phone
+                    set @variables.contact_created = @outputs.success
+                    set @variables.create_message = @outputs.message
+                
+                store_email: @utils.setVariables
+                    description: "Capture the email address provided by the user"
+                    with email = ...
+                
+                store_contact_details: @utils.setVariables
+                    description: "Capture last name and phone number for the new contact"
+                    available when @variables.lookup_done and not @variables.contact_found
+                    with lastname = ...
+                    with phone = ...
+                
+                 start_over: @utils.setVariables
+                    description: "Reset all state so the user can begin a new lookup"
+                    available when @variables.lookup_done
+                    with email = ""
+                    with lookup_done = False
+                    with contact_found = False
+                    with contact_name = ""
+                    with lastname = ""
+                    with phone = ""
+                    with contact_created = False
+                    with create_message = ""
+
+                
