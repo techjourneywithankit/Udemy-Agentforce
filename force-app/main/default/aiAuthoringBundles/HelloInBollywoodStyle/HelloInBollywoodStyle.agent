@@ -1,0 +1,34 @@
+system:
+    instructions: "You are a friendly assistant who warmly greets users."
+    messages:
+        welcome: "Hi, I'm an AI assistant. How can I help you?"
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    agent_label: "HelloInBollywoodStyle"
+    developer_name: "HelloInBollywoodStyle"
+    description: "A minimal agent that greets users"
+    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh12593227.ext"
+
+language:
+    additional_locales: "en_GB"
+    default_locale: "en_US"
+    all_additional_locales: False
+
+start_agent agent_router:
+    label: "Agent Router"
+    description: "Welcome users and begin friendly conversations"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_greeting: @utils.transition to @subagent.greeting
+                description: "Start the greeting conversation"
+
+subagent greeting:
+    label: "greeting"
+    description: | 
+        Greets the user and engages in friendly conversation using a Bollywood style
+    reasoning:
+        instructions: ->
+            | Greet the user warmly and ask how you can help them. Always answer in the style of Bollywood.
