@@ -11,22 +11,26 @@ system:
         error: "I encountered an issue processing your request. Please try again or contact support."
 
 config:
-    developer_name: "Case_Priority_Checker_Agent"
-    default_agent_user: "helloinbollywoodstyle@00dg5000002fjxh534808499.ext"
-    agent_label: "Case Priority Checker Agent"
-    description: "Checks case priority, lists open cases by customer email from context, and escalates other requests to human agent"
+    agent_label: "CasePriorityChecker"
+    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
+    developer_name: "CasePriorityChecker"
+    description: "Checks case priority via the GetCasePriority flow and escalates non-priority requests to a human agent"
+    default_agent_user: "caseprioritychecker@00dg50000092j7p272443358.ext"
+
 
 language:
     default_locale: "en_US"
     additional_locales: ""
 
 variables:
-    case_number: mutable string = ""
-        description: "Case number provided by user"
-    case_priority: mutable string = ""
-        description: "Current priority of the case (High, Medium, Low)"
-    error_message: mutable string = ""
-        description: "Error message from flow if case number is invalid"
+   case_number: mutable string = ""
+      description: "Case number provided by the user"
+   case_priority: mutable string = ""
+      description: "Current priority of the case (High, Medium, Low) returned by the flow"
+   error_message: mutable string = ""
+      description: "Error message from the flow if the case number is invalid; empty when valid"
+   escalation_attempted: mutable boolean = False
+      description: "Latch — set to True after the agent has tried to escalate, so the planner does not loop back into escalation"
     cases_summary: mutable string = ""
         description: "Formatted list of open cases from get_open_cases action"
     open_case_count: mutable number = 0
@@ -40,8 +44,8 @@ variables:
         source: @MessagingSession.customer_email__c
         description: "This variable may also be referred to as MessagingSession customer_email__c"
 
-start_agent topic_selector:
-    label: "Topic Selector"
+start_agent agent_router:
+    label: "Agent Router"
 
     description: "Entry point for case priority checking and listing open cases"
 
@@ -57,12 +61,14 @@ start_agent topic_selector:
             | For any other request, transition to priority_check.
 
         actions:
-            go_to_list_cases: @utils.transition to @topic.list_cases
+            go_to_list_cases: @utils.transition to @subagent.list_cases
                 description: "When user asks to list, show, or view their cases"
-            go_to_priority_check: @utils.transition to @topic.priority_check
+            go_to_priority_check: @utils.transition to @subagent.priority_check
                 description: "When user asks about case priority or provides a case number"
+             go_to_escalation: @utils.transition to @subagent.escalation
+                description: "Hand off to escalation when the user asks about anything other than case priority"
 
-topic priority_check:
+subagent priority_check:
     # new topic
     label: "priority_check"
     description: "Handles case priority checking and escalation for other requests"
@@ -99,7 +105,7 @@ topic priority_check:
 
 
         actions:
-            transition_to_escalation: @utils.transition to @topic.escalation
+            transition_to_escalation: @utils.transition to @subagent.escalation
                 description: "Transition to escalation topic when user asks about anything OTHER than case priority"
          
             extract_case_info: @utils.setVariables
@@ -130,7 +136,7 @@ topic priority_check:
                  description: "Error message if case number is invalid, empty if case is valid"
            target: "flow://GetCasePriority"
 
-topic list_cases:
+subagent list_cases:
     label: "list_cases"
     description: "Lists open cases for the customer using their email from MessagingSession"
 
@@ -171,23 +177,38 @@ topic list_cases:
                     complex_data_type_name: "lightning__booleanType"
                 message: string
                     description: "Status or error message"
-                case_count: object
+                case_count: number
                     description: "Number of open cases found"
-                    complex_data_type_name: "lightning__integerType"
                 cases_summary: string
                     description: "Formatted list of open cases"
             target: "apex://OpenCasesByContactEmailService"
 
-topic escalation:
-    description: "Handles requests from users who want to transfer or escalate their conversation to a live human agent."
-
+subagent escalation:
+    label: "escalation"
+    description: | 
+        Hands the conversation off to a live human agent for any request outside the priority-checking scope
     reasoning:
         instructions: ->
-            | If a user explicitly asks to transfer to a live agent, escalate the conversation.
-                If escalation to a live agent fails for any reason, acknowledge the issue and ask the user whether they would like to log a support case instead.
-                Since the user is asking about something else, you must escalate to a human agent.
-                | Call {!@actions.escalate_to_human} immediately to transfer the user to a human agent.
-                
+            if @variables.escalation_attempted:
+                | Escalation has already been attempted. Do NOT call escalate_to_human again.
+                    Apologize that a live agent could not be reached and ask the user whether
+                    they would like to log a support case instead.
+            else:
+                | The user has asked about something other than case priority, or has explicitly
+                    requested a human. Acknowledge briefly and call {!@actions.escalate_to_human} exactly once.
+                    After invoking it, invoke {!@actions.mark_escalation_attempted}, set escalation_attempted to True so we do not loop.
+
         actions:
-         escalate_to_human: @utils.escalate
-            description: "Transfer the conversation to a live human agent when the user requests escalation or when their request is outside the agent's scope (non-priority, non-list-cases)"
+            escalate_to_human: @utils.escalate
+                description: "Escalate the conversation to a human agent for any non-priority request"
+                available when @variables.escalation_attempted == False
+
+            mark_escalation_attempted: @utils.setVariables
+                description: "Latch escalation_attempted so the agent does not loop back into another escalate call"
+                with escalation_attempted = True
+
+connection messaging:
+    outbound_route_type: "OmniChannelFlow"
+    outbound_route_name: "flow://Outbound_Flow_Route_to_Human_Agent"
+    escalation_message: "One moment, I'm transferring our conversation to get you more help."
+    adaptive_response_allowed: True

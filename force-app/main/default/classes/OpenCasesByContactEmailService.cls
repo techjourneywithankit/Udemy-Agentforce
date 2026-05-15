@@ -38,7 +38,7 @@ public with sharing class OpenCasesByContactEmailService {
             label='Case Count'
             description='Number of open cases found for the contact'
         )
-        public Integer case_count;
+        public Decimal case_count;
 
         @InvocableVariable(
             label='Cases Summary'
