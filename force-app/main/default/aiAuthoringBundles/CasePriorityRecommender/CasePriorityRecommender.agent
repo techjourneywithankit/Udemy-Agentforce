@@ -1,124 +1,105 @@
-system:
-    instructions: "You are a case priority checker. Your ONLY function is to look up case priority. If the user asks about anything else (case status, updates, general questions, account help, etc.), escalate to a human agent."
-    messages:
-        welcome: "Hello! I can help you check the priority of your case. Please provide your case number."
-        error: "I encountered an issue processing your request. Please try again or contact support."
+# CasePriorityRecommender - Gated Prompt Template Invocation
+# Demonstrates invoking a Flex GenAi Prompt Template with TWO primitive-string inputs,
+# collected ONE AT A TIME before execution.
+#
+# The agent uses @variables + @utils.setVariables to capture the caseSubject and
+# caseDescription across conversation turns. The recommend_priority action is only
+# allowed to run once BOTH variables are populated.
 
 config:
-    agent_label: "CasePriorityChecker"
-    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
-    developer_name: "CasePriorityChecker"
-    description: "Checks case priority via the GetCasePriority flow and escalates non-priority requests to a human agent"
-    default_agent_user: "caseprioritychecker@00ddm00000uoupi59916051.ext"
+   developer_name: "CasePriorityRecommender"
+   agent_label: "CasePriorityRecommender"
+   agent_type: "AgentforceEmployeeAgent"
+   description: "Recommends a Case Priority (High, Medium, Low) by invoking the Recommend_Case_Priority prompt template once both the subject and description are collected"
 
 variables:
-   case_number: mutable string = ""
-      description: "Case number provided by the user"
+   case_subject: mutable string = ""
+      description: "The Case subject — collected from the user before running the prompt template"
 
-   case_priority: mutable string = ""
-      description: "Current priority of the case (High, Medium, Low) returned by the flow"
+   case_description: mutable string = ""
+      description: "The Case description — collected from the user before running the prompt template"
 
-   error_message: mutable string = ""
-      description: "Error message from the flow if the case number is invalid; empty when valid"
+   recommended_priority: mutable string = ""
+      description: "The priority recommendation (High, Medium, or Low) returned by the prompt template"
 
-   escalation_attempted: mutable boolean = False
-      description: "Latch — set to True after the agent has tried to escalate, so the planner does not loop back into escalation"
+system:
+   messages:
+      welcome: "Hi! I can recommend a Case Priority. I'll ask you for the Case subject, then the description, and then give you a recommendation."
+      error: "Something went wrong while generating the priority recommendation."
 
-language:
-    additional_locales: "en_GB"
-    default_locale: "en_US"
-    all_additional_locales: False
-
+   instructions: "You are a concise support-operations assistant who helps users assess a Case's priority. Collect the subject first, then the description. Only generate a recommendation once both are captured."
 
 start_agent agent_router:
-    label: "Agent Router"
-    description: "Entry point for case priority checking"
-    reasoning:
-        instructions: ->
-            | Select the best tool to call based on conversation history and user's intent.
-        actions:
-            go_to_escalation: @utils.transition to @subagent.escalation
-                description: "Hand off to escalation when the user asks about anything other than case priority"
-            go_to_priority_check: @utils.transition to @subagent.priority_check
-                description: "Hand off to the priority checker when the user asks about case priority"
+   description: "Route the user to the priority recommender subagent"
 
-subagent priority_check:
-    label: "priority_check"
-    description: | 
-        Collects a case number and returns the case priority by calling the GetCasePriority flow
-    actions:
-        get_case_priority:
-         description: "Look up the priority of a Salesforce Case using its case number"
+   reasoning:
+      instructions: |
+         Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+      actions:
+         go_to_priority_recommender: @utils.transition to @subagent.priority_recommender
+            description: "Hand off to the priority recommender subagent"
+
+subagent priority_recommender:
+   description: "Collects the Case subject and description one at a time, then calls the Recommend_Case_Priority prompt template"
+
+   actions:
+      recommend_priority:
+         description: "Calls the Recommend_Case_Priority Flex prompt template with the collected subject and description. Returns a single-word priority recommendation: High, Medium, or Low."
+         # The prompt template declares two primitive string inputs:
+         #   referenceName=Input:caseSubject     definition=primitive://String
+         #   referenceName=Input:caseDescription definition=primitive://String
+         # Primitive-typed template inputs are declared as plain `string` here
+         # (no complex_data_type_name needed — that's only for SObject/record inputs).
          inputs:
-            case_number: string
-               description: "The Case Number to retrieve priority for"
+            "Input:caseSubject": string
+               description: "The Case subject — required"
+               is_required: True
+            "Input:caseDescription": string
+               description: "The Case description — required"
                is_required: True
          outputs:
-            case_priority: string
-               description: "The current priority of the case (High, Medium, Low) — empty if invalid"
+            promptResponse: string
+               description: "The recommended priority: High, Medium, or Low"
                is_used_by_planner: True
                is_displayable: True
-            error_message: string
-               description: "Error message if the case number is invalid; empty when valid"
-               is_used_by_planner: True
-               is_displayable: True
-         target: "flow://GetCasePriority"
-    reasoning:
-        instructions: ->
-         | You help users look up the priority of a Salesforce Case.
-           Current state:
+         target: "generatePromptResponse://Recommend_Case_Priority"
 
-         if @variables.case_number:
-            | - Case Number: {!@variables.case_number}
+   reasoning:
+      instructions: ->
+         |
+           Collect the Case subject and description one at a time. Do not run the priority recommendation until BOTH are captured.
+
+           Current progress:
+
+         if @variables.case_subject:
+            | - Subject: {!@variables.case_subject}
          else:
-            | - Case Number: Not provided
+            | - Subject: Not provided
 
-         if @variables.case_priority:
-            | - Priority: {!@variables.case_priority}
+         if @variables.case_description:
+            | - Description: {!@variables.case_description}
          else:
-            | - Priority: Not yet retrieved
+            | - Description: Not provided
 
-         if @variables.error_message:
-            | - Error: {!@variables.error_message}
+         if @variables.recommended_priority:
+            | - Recommended Priority: {!@variables.recommended_priority}
+         else:
+            | - Recommended Priority: Not yet generated
 
          | Your task:
-           1. If the user asks about anything other than case priority, transition to the escalation subagent.
-           2. If case_number is empty, ask the user for the case number and capture it with set_case_number.
-           3. Once case_number is captured and case_priority is empty, call retrieve_priority.
-           4. If error_message is non-empty after retrieve_priority runs, tell the user the case number is invalid and ask them to provide it again. Clear case_number so they can retry.
-           5. If case_priority is non-empty, tell the user: "The priority for case {!@variables.case_number} is {!@variables.case_priority}."
+           1. If case_subject is empty, ask the user for the Case subject. Do not ask about the description yet.
+           2. Once case_subject is captured and case_description is empty, ask the user for the Case description.
+           3. Only AFTER both case_subject and case_description are populated AND recommended_priority is empty, call {!@actions.recommend_priority} with the two collected variables.
+           4. After the action runs, store the result in @variables.recommended_priority and tell the user: "Based on the subject and description, the recommended Case Priority is <High|Medium|Low>." Also briefly restate the subject and description you used.
+           5. Never ask for the description before the subject is captured, and never run the recommendation before both are captured.
+      actions:
+         set_case_subject: @utils.setVariables
+            with case_subject=...
 
-        actions:
-            retrieve_priority: @actions.get_case_priority
-                description: "Retrieve the case priority from Salesforce via the GetCasePriority flow"
-                available when @variables.case_number != ""
-                with case_number = @variables.case_number
-                set @variables.case_priority = @outputs.case_priority
-                set @variables.error_message = @outputs.error_message   
-                        
-            set_case_number: @utils.setVariables
-                description: "Capture the case number provided by the user"
-                with case_number = ...
-subagent escalation:
-    label: "escalation"
-    description: | 
-        Hands the conversation off to a live human agent for any request outside the priority-checking scope
-    reasoning:
-        instructions: ->
-            if @variables.escalation_attempted:
-                | Escalation has already been attempted. Do NOT call escalate_to_human again.
-                    Apologize that a live agent could not be reached and ask the user whether
-                    they would like to log a support case instead.
-            else:
-                | The user has asked about something other than case priority, or has explicitly
-                    requested a human. Acknowledge briefly and call {!@actions.escalate_to_human} exactly once.
-                    After invoking it, invoke {!@actions.mark_escalation_attempted}, set escalation_attempted to True so we do not loop.
+         set_case_description: @utils.setVariables
+            with case_description=...
 
-        actions:
-            escalate_to_human: @utils.escalate
-                description: "Escalate the conversation to a human agent for any non-priority request"
-                available when @variables.escalation_attempted == False
-
-            mark_escalation_attempted: @utils.setVariables
-                description: "Latch escalation_attempted so the agent does not loop back into another escalate call"
-                with escalation_attempted = True
+         recommend_priority: @actions.recommend_priority
+            with "Input:caseSubject"=@variables.case_subject
+            with "Input:caseDescription"=@variables.case_description
+            set @variables.recommended_priority = @outputs.promptResponse
