@@ -1,0 +1,106 @@
+system:
+    instructions: "You are a sales assistant that helps users create new leads. You use a structured form to collect lead details efficiently. Always be professional and confirm successful creation."
+    messages:
+        welcome: "Hi! I can help you create a new lead. Just let me know when you are ready.\""
+        error: "Something went wrong while creating the lead. Please try again or let me know if you need help with something else."
+
+config:
+    agent_label: "LeadCreationCLT"
+    agent_template: "EmployeeCopilot__AgentforceEmployeeAgent"
+    developer_name: "LeadCreationCLT"
+    agent_type: "AgentforceEmployeeAgent"
+    description: "Creates leads using Custom Lightning Types for rich form input and styled output display"
+
+language:
+    default_locale: "en_US"
+    additional_locales: "en_GB"
+    all_additional_locales: False
+
+variables:
+   lead_created: mutable boolean = False
+      description: "Whether a lead has been successfully created this session"
+   lead_id: mutable string = ""
+      description: "The Salesforce ID of the most recently created lead"
+   lead_name: mutable string = ""
+      description: "The full name of the most recently created lead"
+   create_another: mutable boolean = False
+      description: "Whether the user wants to create another lead"
+
+start_agent agent_router:
+    description: "Welcome users and route to lead creation workflow"
+    reasoning:
+        instructions:|
+            Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
+        actions:
+             begin_lead_creation: @utils.transition to @subagent.lead_creation
+                description: "Route to lead creation. Call for any lead-related requests including creating, adding, or submitting a new lead."
+
+
+subagent lead_creation:
+    label: "lead_creation"
+    description: |
+
+        Collects lead details via a CLT editor form and displays the created lead via a CLT renderer card
+    before_reasoning:
+        if @variables.create_another:
+            set @variables.lead_created = False
+            set @variables.lead_id = ""
+            set @variables.lead_name = ""
+            set @variables.create_another = False
+    reasoning:
+        instructions: ->
+            if not @variables.lead_created:
+                | The user wants to create a new lead.
+                |  Call {!@actions.create_lead} action's user_input tool to collect the lead details from the user.
+                |  Do NOT ask for individual fields via text. Do NOT output any text before showing the form.
+                |  If ACTION_CONFIRM, call {!@actions.create_lead} with the form data. Do NOT ask for confirmation or output any text.
+            else:
+                |   Lead "{!@variables.lead_name}" (ID: {!@variables.lead_id}) was created successfully.
+                |   Ask the user if they would like to create another lead or if there is anything else you can help with.
+                |   If the user wants to create another lead, call {!@actions.reset_for_new_lead}.
+        actions:
+            create_lead: @actions.create_lead
+                with lead_data = ...
+                set @variables.lead_created = True
+                set @variables.lead_id = @outputs.lead_id
+                set @variables.lead_name = @outputs.lead_result.name
+            reset_for_new_lead : @utils.setVariables
+                with create_another = true
+
+    actions:
+        create_lead:
+            description: |
+                Creates a new Lead record in Salesforce with the provided details
+            label: "Create Lead"
+            require_user_confirmation: False
+            include_in_progress_indicator: True
+            progress_indicator_message: "Creating lead record..."
+            source: "Create_Lead"
+            target: "apex://LeadCreationService"
+                
+            inputs:
+                "lead_data": object
+                    description: |
+                      Lead details collected from the form
+                              
+                    label: "lead_data"
+                    is_required: True
+                    is_user_input: True
+                    complex_data_type_name: "c__LeadInput"
+                
+            outputs:
+                "lead_id": string
+                    description: |
+                      The ID of the created Lead
+                              
+                    label: "lead_id"
+                    is_displayable: False
+                    filter_from_agent: False
+                "lead_result": object
+                    description: |
+                      Created lead details for display
+                              
+                    label: "lead_result"
+                    is_displayable: True
+                    filter_from_agent: False
+                    complex_data_type_name: "c__LeadOutput"

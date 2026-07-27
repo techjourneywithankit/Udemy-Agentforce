@@ -1,0 +1,46 @@
+<!-- leadInputEditor.html -->
+<template>
+    <lightning-card title="Create a New Lead" icon-name="standard:lead">
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <div class="slds-grid slds-wrap slds-gutters_small">
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-input label="First Name" name="firstName"
+                        value={firstName} placeholder="Enter first name"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-input label="Last Name" name="lastName"
+                        value={lastName} required placeholder="Enter last name"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-input label="Company" name="company"
+                        value={company} required placeholder="Enter company name"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-input label="Email" name="email" type="email"
+                        value={email} placeholder="name@company.com"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-input label="Phone" name="phone" type="tel"
+                        value={phone} placeholder="(555) 000-0000"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-input>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <lightning-combobox label="Lead Source" name="leadSource"
+                        value={leadSource} options={leadSourceOptions}
+                        placeholder="Select lead source"
+                        onchange={handleInputChange} read-only={readOnly}>
+                    </lightning-combobox>
+                </div>
+            </div>
+        </div>
+    </lightning-card>
+</template>

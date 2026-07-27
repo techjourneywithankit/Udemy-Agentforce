@@ -1,0 +1,38 @@
+<!-- leadResultRenderer.html -->
+<template>
+    <lightning-card title="Lead Created Successfully" icon-name="standard:lead">
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <div class="slds-box slds-theme_success slds-var-m-bottom_medium">
+                <p class="slds-text-heading_small">
+                    New lead created: <strong>{name}</strong>
+                </p>
+            </div>
+            <div class="slds-grid slds-wrap slds-gutters_small">
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Company</p>
+                    <p>{company}</p>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Status</p>
+                    <lightning-badge label={status}></lightning-badge>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Email</p>
+                    <p>{email}</p>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Phone</p>
+                    <p>{phone}</p>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Lead Source</p>
+                    <p>{leadSource}</p>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-var-m-bottom_small">
+                    <p class="slds-text-title_caps slds-var-m-bottom_xx-small">Created Date</p>
+                    <p>{createdDate}</p>
+                </div>
+            </div>
+        </div>
+    </lightning-card>
+</template>
