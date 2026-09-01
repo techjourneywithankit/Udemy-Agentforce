@@ -1,87 +1,77 @@
-# BookReviewCollector - Structured Book Review Capture
-# This agent demonstrates how to use variables to collect a multi-field review
-# across conversation turns, including a numeric rating with a range check.
+system:
+    instructions: |You are a friendly book-club facilitator. Stay enthusiastic about reading. Keep every reply short and warm.
+
+    messages:
+        welcome: "Welcome to Book Review! Tell me about a book you've read recently."
+        error: "Sorry, something went wrong. Let's try that again"
 
 config:
-   developer_name: "BookReviewCollector"
-   agent_label: "BookReviewCollector"
-   agent_type: "AgentforceEmployeeAgent"
-   description: "Guides the user through writing a structured book review"
+    agent_label: "Book Review Collector"
+    agent_template: "EmployeeCopilot__AgentforceEmployeeAgent"
+    developer_name: "Book_Review_Collector"
+    agent_type: "AgentforceEmployeeAgent"
+    description: "Guides the user through a structured book review: title, written thoughts, and a 1 to 5 star rating."
+
+language:
+    default_locale: "en_US"
+
 
 variables:
-   # String variable - the book's title
-   book_title: mutable string = ""
-      description: "Title of the book being reviewed"
-
-   # String variable - the user's written thoughts
-   written_review: mutable string = ""
-      description: "The user's written review or thoughts about the book"
-
-   # Number variable - a 1 to 5 star rating
-   rating: mutable number = 0
-      description: "Star rating from 1 to 8"
-
-   # Boolean variable - tracks whether the full review has been captured
-   review_complete: mutable boolean = False
-      description: "Whether the full review has been collected"
-
-system:
-   messages:
-      welcome: "Welcome to Book Review! Tell me about a book you've read recently."
-      error: "Sorry, something went wrong. Let's try again."
-
-   instructions: "You are a friendly book club facilitator. Guide the user through their review one step at a time. Be enthusiastic about reading and keep each prompt short and warm."
+    book_title: mutable string = ""
+        description: "Title of the book being reviewe"
+        label: "book title"
+        visibility: "External"
+    written_review: mutable string = ""
+        description: "The user's written thoughts about the book"
+        label: "written review"
+        visibility: "External"
+    rating: mutable number = 0
+        description: "Star rating from 1 to 5"
+        label: "rating"
 
 
 start_agent agent_router:
-      description: "Welcome users"
+    label: "Agent Router"
+    description: "Welcome the user and determine the appropriate subagent based on user input"
+    model_config:
+        model: "model://sfdc_ai__DefaultEinsteinHyperClassifier"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_Review_Collector: @utils.transition to @subagent.Review_Collector
+                description:"Collects the book title, written review, and star rating and saves them in variables."
 
-      reasoning:
-         instructions:|
-               Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
-         actions:
-            go_to_review_collector: @utils.transition to @subagent.review_collector
-               description: "Collects the book title, written review, and star rating from the user."
+subagent Review_Collector:
+    label: "Review Collector"
+    description: |
 
-subagent review_collector:
-   description: "Collects the book title, written review, and star rating and saves them in variables."
+        Collects the book title, written review, and star rating and saves them in variables.
+    reasoning:
+        instructions: ->
+            |Collect the book review one step at a time.
+             Be natural and conversational. Do not ask all questions at once.
+            if @variables.book_title == "":
+                |If the user provided the title, use {!@actions.set_title}to save it. otherwise ask for the book title.
+            if @variables.written_review == "":
+                |if the user share there thoughts, use {!@actions.set_review}to save them. Otherwise ask for a few sentences about a book
+            if @variables.rating == 0:
+                |if the user gave 1 to 5 stars, use {!@actions.set_rating}to save it. otherwise ask for a star rating from 1 to 5.
+            |only accept the rating from 1 to 5 stars. If the {!@variables.rating}value is not in the range of 1 to 5, ask again to the user and then save the valid value.
 
-   reasoning:
-      instructions: ->
-         |
-           Collect the book review details one step at a time.
-
-           Review so far:
-
-         if @variables.book_title:
-            | - Title: {!@variables.book_title}
-         else:
-            | - Title: Not provided
-
-         if @variables.written_review:
-            | - Review: {!@variables.written_review}
-         else:
-            | - Review: Not provided
-
-         if @variables.rating > 0:
-            | - Rating: {!@variables.rating}/5 stars
-         else:
-            | - Rating: Not provided
-
-         | - Review complete: {!@variables.review_complete}
-
-           Your task:
-           1. Be natural and conversational. Don't ask all questions at once.
-           2. If book_title is empty, ask for the book's title.
-           3. If written_review is empty, ask for their thoughts in a few sentences.
-           4. If rating is 0, ask for a star rating from 1 to 5.
-           5. Once all information is collected, thank the user and display
-              the full review summary back to them.
-      actions:
-         set_title: @utils.setVariables
-            with book_title=...
-         set_review: @utils.setVariables
-            with written_review=...
-         set_rating: @utils.setVariables
-            with rating=...
-            with review_complete = True
+            if @variables.book_title != "" and @variables.written_review != "" and @variables.rating != 0:
+                |Thanks the user and display the recap as well.
+                |Title : {!@variables.book_title}
+                |Review : {!@variables.written_review}
+                |Rating : {!@variables.rating}stars
+            |
+        actions:
+            set_title: @utils.setVariables
+                description: "Save the book title."
+                with book_title = ...
+            set_review: @utils.setVariables
+                description: "Save the written review."
+                with written_review = ...
+            set_rating: @utils.setVariables
+                description: "Save a star rating from 1 to 5"
+                with rating = ...
