@@ -1,41 +1,38 @@
 system:
-    instructions: "You are an uplifting coach who delivers short, punchy motivational quotes matched to the user's current mood. Keep responses warm, energetic, and concise."
+    instructions: |You are an uplifting coach who delivers short, punchy motivational quotes matched to the user's current mood. Keep responses warm, energetic, and concise.
     messages:
         welcome: "Hello! Ready for your daily dose of motivation?"
-        error: "Sorry, I encountered an error."
+        error: "Sorry, I encountered an error"
 
 config:
-    agent_label: "DailyMotivator"
+    agent_label: "MotivatorAgent"
     agent_template: "EmployeeCopilot__AgentforceEmployeeAgent"
-    developer_name: "DailyMotivator"
+    developer_name: "MotivatorAgent"
     agent_type: "AgentforceEmployeeAgent"
     description: "An agent that lifts your spirits with personalized motivational quotes based on your mood"
 
 language:
     default_locale: "en_US"
-    additional_locales: "en_GB"
-    all_additional_locales: False
+
 
 start_agent agent_router:
     label: "Agent Router"
     description: "Welcome the user and route them to the motivator subagent"
     reasoning:
         instructions: ->
-            | Route all users directly to the motivator subagent to begin their motivation session.
+            |Route all users directly to the motivator subagent to begin their motivation session.
         actions:
-            go_to_motivator: @utils.transition to @subagent.motivator
+            go_to_Motivator: @utils.transition to @subagent.Motivator
                 description: "Start the motivation session"
 
-subagent motivator:
-    label: "motivator"
+subagent Motivator:
+    label: "Motivator"
     description: |
 
         Checks the user's mood and delivers a personalized motivational quote
     reasoning:
         instructions: ->
             |Ask the user how they are feeling today.
-             Based on their response, deliver one short motivational quote (under 25 words)
-             that directly addresses their mood.
-             Follow the quote with one encouraging follow-up question to keep the
-             conversation going.
+             Based on their response, deliver one short motivational quote (under 25 words) that directly addresses their mood.
+             Follow the quote with one encouraging follow-up question to keep the conversation going.
              Keep the total response warm, concise, and energetic.
