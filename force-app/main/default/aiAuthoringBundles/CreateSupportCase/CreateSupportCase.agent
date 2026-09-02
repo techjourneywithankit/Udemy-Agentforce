@@ -1,65 +1,108 @@
 system:
-   messages:
-      welcome: "Hi! I can help you log a support case. Tell me what's going wrong."
-      error: "Something went wrong while creating your case."
+    instructions: |You are a support assistant who helps users log support cases.
+                   Keep replies short. Always confirm the case number after a case
+                   is created.
 
-   instructions: "You are a support assistant who helps users log support cases. Always confirm the case number with the user after the case is created."
-
+    messages:
+        welcome: "Hi! I can help you log a support case. Tell me what's going wrong."
+        error: "Something went wrong while creating your case."
 
 config:
+    agent_label: "Create Support Case"
+    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
     developer_name: "CreateSupportCase"
-    agent_type: "AgentforceEmployeeAgent"
-    agent_label: "CreateSupportCase"
     description: "Creates a support case via a Flow action, taking a required subject and optional description"
 
+access:
+    default_agent_user: "create_support_case@00dgk000000jzmx1642579533.ext"
+
+variables:
+    subject: mutable string = ""
+        description: "Subject of Case"
+        label: "subject"
+        visibility: "External"
+    issue_description: mutable string = ""
+        description: "Optional longer description of the issue"
+        label: "issue description"
+        visibility: "External"
+    case_number: mutable string = ""
+        description: "Case number returned from the successful create"
+        label: "case number"
+    error_message: mutable string = ""
+        description: "Error returned when the case creation failed."
+        label: "error message"
+        visibility: "External"
 
 language:
+    additional_locales: "en_GB"
     default_locale: "en_US"
-    additional_locales: ""
     all_additional_locales: False
 
+
 start_agent agent_router:
-   description: "Route the user to the case creation subagent"
+    label: "Agent Router"
+    description: "Welcome the user and determine the appropriate subagent based on user input"
+    model_config:
+        model: "model://sfdc_ai__DefaultGPT41"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_Case_Management: @utils.transition to @subagent.Case_Management
+                description: "Collects a subject, optionally a longer description, and creates a Case via Flow"
 
-   reasoning:
-      instructions: |
-         Select the tool that best matches the user's message and conversation history. If it's unclear, make your best guess.
-      actions:
-         go_to_case_management: @utils.transition to @subagent.case_management
-            description: "Hand off to the case management subagent to log a support case"
+subagent Case_Management:
+    label: "Case Management"
+    description: |
 
-subagent case_management:
-   description: "Creates a support case using the Flow-backed create_case action"
-   actions:
-        create_case:
-            description: "Creates a support case. Requires a subject. Description is optional."
+        Collects a subject, optionally a longer description, and creates a Case via Flow
+    reasoning:
+        instructions: ->
+            |Help the user log a support case. Be concise. Do not ask for everything at once.
+            if @variables.subject == "":
+                |if the user described the issue use {!@actions.set_subject}to save the short subject. otherwise ask for a short subject
+            if @variables.subject != "" and @variables.case_number == "":
+                |a longer description is optional - do not insist. if user provided then save the issue description using {!@actions.set_description}to save it.
+                |Use the {!@actions.create_case_action}to log the case
+            |Once the {!@variables.case_number}is available share the case number with user and mention then they should use this case number for future communication.
+            if @variables.error_message != "":
+                |Case creation failed. Apologize , share the {!@variables.error_message}, and ask them to retry.
+            |
+        actions:
+            set_subject: @utils.setVariables
+                description: "save the case subject"
+                with subject = ...
+            set_description: @utils.setVariables
+                description: "save the issue description"
+                with issue_description = ...
+            create_case_action: @actions.create_case_action
+                available when @variables.subject != ""
+                with inpCaseSubject = ...
+                with inpDescription = ...
+                set @variables.case_number = @outputs.outCaseNumber
+                set @variables.error_message = @outputs.outErrorMessage
+    actions:
+        create_case_action:
+            label: "create case action"
+            description: "create case record based on subject and optional description"
+            target: "flow://Case_Creation_Action_For_Agent"
             inputs:
-                subject: string
-                    description: "Short summary of the issue — required"
+                inpCaseSubject: string
+                    label: "inpCaseSubject"
+                    description: "Case Subject"
                     is_required: True
-                description: string
-                    description: "Longer explanation of the issue — optional"
+                inpDescription: string
+                    label: "inpDescription"
+                    description: "Optional description of case"
                     is_required: False
             outputs:
-                case_number: string
-                    description: "The Case Number of the newly created Case record — populated only on success"
-                error_message: string
-                    description: "The error message if case creation failed — populated only on failure"
-            target: "flow://CreateSupportCase"
-   reasoning:
-        instructions: ->
-             | Help the user log a support case.
-               Ask for a short subject describing the issue if they haven't already provided one.
-               Optionally ask if they want to add a longer description — but do not insist.
-               Once you have at least a subject, call {!@actions.create_case}
-               After the action runs, check the outputs:
-                    - If case_number has a value, the case was created successfully. Share the case number with the user and confirm the case is logged.
-                    - If case_number is empty and error_message has a value, the case creation failed. Apologize to the user, share the error_message, and ask them to try again or contact support directly.
-        actions:
-            create_case: @actions.create_case
-                with subject = ...
-                with description = ...
-
-   
-
-
+                outCaseNumber: string
+                    label: "outCaseNumber"
+                    description: "Case Number of newly created case"
+                    is_displayable: True
+                    filter_from_agent: False
+                outErrorMessage: string
+                    label: "outErrorMessage"
+                    description: "Error message if case creation failed"
+                    is_displayable: True
+                    filter_from_agent: False
