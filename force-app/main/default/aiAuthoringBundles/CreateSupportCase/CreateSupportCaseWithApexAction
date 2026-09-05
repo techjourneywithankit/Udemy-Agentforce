@@ -1,0 +1,134 @@
+system:
+    instructions: |You are a support assistant who helps users log support cases.
+                   Keep replies short. Always confirm the case number after a case
+                   is created.
+
+    messages:
+        welcome: "Hi! I can help you log a support case. Tell me what's going wrong."
+        error: "Something went wrong while creating your case."
+
+config:
+    agent_label: "Create Support Case"
+    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
+    developer_name: "CreateSupportCase"
+    description: "Creates a support case via a Flow action, taking a required subject and optional description"
+
+access:
+    default_agent_user: "create_support_case@00dgk000000jzmx1642579533.ext"
+
+variables:
+    subject: mutable string = ""
+        description: "Subject of Case"
+        label: "subject"
+        visibility: "External"
+    issue_description: mutable string = ""
+        description: "Optional longer description of the issue"
+        label: "issue description"
+        visibility: "External"
+    case_number: mutable string = ""
+        description: "Case number returned from the successful create"
+        label: "case number"
+    error_message: mutable string = ""
+        description: "Error returned when the case creation failed."
+        label: "error message"
+        visibility: "External"
+    CaseSummary: mutable string
+        description: "Case Summary"
+        label: "CaseSummary"
+        visibility: "External"
+
+language:
+    additional_locales: "en_GB"
+    default_locale: "en_US"
+    all_additional_locales: False
+
+start_agent agent_router:
+    label: "Agent Router"
+    description: "Welcome the user and determine the appropriate subagent based on user input"
+    model_config:
+        model: "model://sfdc_ai__DefaultGPT41"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_Case_Management: @utils.transition to @subagent.Case_Management
+                description: "Collects a subject, optionally a longer description, and creates a Case via Flow"
+
+subagent Case_Management:
+    label: "Case Management"
+    description: |
+
+        Collects a subject, optionally a longer description, and creates a Case via Flow
+    reasoning:
+        instructions: ->
+            |Help the user log a support case. Be concise. Do not ask for everything at once.
+            if @variables.subject == "":
+                |if the user described the issue use {!@actions.set_subject}to save the short subject. otherwise ask for a short subject
+            if @variables.subject != "" and @variables.case_number == "":
+                |a longer description is optional - do not insist. if user provided then save the issue description using {!@actions.set_description}to save it.
+                |Use the {!@actions.create_case_action}to log the case
+            |Once the {!@variables.case_number}is available share the {!@variables.CaseSummary}. Thanks the user for logging the case. Make sure you are not asking any other followup
+            if @variables.error_message != "":
+                |Case creation failed. Apologize , share the {!@variables.error_message}, and ask them to retry.
+            |
+        actions:
+            set_subject: @utils.setVariables
+                description: "save the case subject"
+                with subject = ...
+            set_description: @utils.setVariables
+                description: "save the issue description"
+                with issue_description = ...
+            create_case_action: @actions.create_case_action
+                available when @variables.subject != ""
+                with inpCaseSubject = ...
+                with inpDescription = ...
+                set @variables.case_number = @outputs.outCaseNumber
+                set @variables.error_message = @outputs.outErrorMessage
+                run @actions.Case_details_by_number
+                    with caseNumber = @variables.case_number
+                    set @variables.CaseSummary = @outputs.caseSummary
+
+    actions:
+        create_case_action:
+            label: "create case action"
+            description: "create case record based on subject and optional description"
+            target: "flow://Case_Creation_Action_For_Agent"
+            inputs:
+                inpCaseSubject: string
+                    label: "inpCaseSubject"
+                    description: "Case Subject"
+                    is_required: True
+                inpDescription: string
+                    label: "inpDescription"
+                    description: "Optional description of case"
+                    is_required: False
+            outputs:
+                outCaseNumber: string
+                    label: "outCaseNumber"
+                    description: "Case Number of newly created case"
+                    is_displayable: True
+                    filter_from_agent: False
+                outErrorMessage: string
+                    label: "outErrorMessage"
+                    description: "Error message if case creation failed"
+                    is_displayable: True
+                    filter_from_agent: False
+
+        Case_details_by_number:
+            label: "Case details by number"
+            description: |Invocable Apex that looks up a Case by Case Number and
+                          returns a one-line summary. Used as the Apex-backed action
+                          in the CreateSupportCase agent, after Flow creates the Case.
+                          Read-only — no DML.
+            target: "apex://CaseDetailsByNumberService"
+            inputs:
+                caseNumber: string
+                    label: "Case Number"
+                    description: "The Case Number to look up (for example 00001012)"
+                    is_required: True
+            outputs:
+                caseSummary: string
+                    label: "Case Summary"
+                    description: "One-line summary of the Case for the agent to read back"
+                    is_displayable: True
+                    filter_from_agent: False
