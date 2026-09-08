@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Suggests 2 to 3 things the user can try before a support Case is logged</description>
+    <developerName>Suggest_Case_Self_Help</developerName>
+    <masterLabel>Suggest Case Self Help</masterLabel>
+    <templateVersions>
+        <content>You are a support assistant. Suggest 2 or 3 things the user can try right now.
+
+Use only these facts. Do not invent product names, account details, error codes, SLAs, wait times, or ticket numbers.
+
+Subject: {!$Input:caseSubject}
+Description: {!$Input:caseDescription}
+
+Write a numbered list of 2 or 3 short steps. Each step must be a generic troubleshooting action that could apply from the subject and description alone, such as retry, restart, or check a setting. If the issue is unclear, give generic first-aid steps only. Do not promise a resolution or a response time.
+</content>
+        <inputs>
+            <apiName>caseSubject</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Case Subject</masterLabel>
+            <referenceName>Input:caseSubject</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>caseDescription</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Case Description</masterLabel>
+            <referenceName>Input:caseDescription</referenceName>
+            <required>false</required>
+        </inputs>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>
