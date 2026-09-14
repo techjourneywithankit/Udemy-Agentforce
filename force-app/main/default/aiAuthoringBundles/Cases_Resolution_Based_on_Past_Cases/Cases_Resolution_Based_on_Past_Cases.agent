@@ -1,0 +1,142 @@
+system:
+    instructions: |You are an AI Agent. Your job is to solve the customer queries based on p
+
+    messages:
+        welcome: |
+            Hi, I'm an AI service assistant. How can I help you?
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    agent_label: "Cases Resolution Based on Past Cases"
+    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
+    developer_name: "Cases_Resolution_Based_on_Past_Cases"
+    description: "Case resolution based on past similar cases resolution "
+
+access:
+    default_agent_user: "create_support_case@00dgk000000jzmx687528971.ext"
+
+variables:
+    authenticationKey: mutable string
+        description: "Stores the authentication key that's used to generate the verification code."
+        visibility: "Internal"
+    customerId: mutable string
+        description: "Stores the Salesforce user ID or contact ID."
+        visibility: "Internal"
+    customerType: mutable string
+        description: "Stores the customer ID type, whether it's a Salesforce user or a contact."
+        visibility: "Internal"
+    isVerified: mutable boolean = False
+        label: "isVerified"
+        description: "Stores a boolean value that indicates whether the customer code is verified."
+        visibility: "Internal"
+    EndUserId: linked string
+        source: @MessagingSession.MessagingEndUserId
+        description: "This variable may also be referred to as MessagingEndUser Id"
+    RoutableId: linked string
+        source: @MessagingSession.Id
+        description: "This variable may also be referred to as MessagingSession Id"
+    ContactId: linked string
+        source: @MessagingEndUser.ContactId
+        description: "This variable may also be referred to as MessagingEndUser ContactId"
+    EndUserLanguage: linked string
+        source: @MessagingSession.EndUserLanguage
+        description: "This variable may also be referred to as MessagingSession EndUserLanguage"
+    ChannelType: linked string
+        source: @MessagingSession.ChannelType
+        description: "This variable may also be referred to as MessagingSession ChannelType"
+    VerifiedCustomerId: mutable string
+        description: "This variable may also be referred to as VerifiedCustomerId"
+        visibility: "Internal"
+    emailCaseId: mutable string
+        description: "Stores the Salesforce Case ID created by an inbound email."
+        visibility: "External"
+    endUserEmail: mutable string
+        description: "Stores email address of the end user who sent the inbound email."
+        visibility: "External"
+    endUserContactId: mutable string
+        description: "Stores the Salesforce Contact ID associated with the end user who sent the inbound email."
+        visibility: "External"
+    RetrieverName: mutable string = "Case_Retriever_1Cx_zmx5f9b88aa"
+        description: "Customer Retriever Name"
+        label: "RetrieverName"
+
+language:
+    additional_locales: "en_GB"
+    default_locale: "en_US"
+    all_additional_locales: False
+
+knowledge:
+    rag_feature_config_id: ""
+    citations_url: ""
+    citations_enabled: False
+
+start_agent agent_router:
+    label: "Agent Router"
+    description: "Welcome the user and determine the appropriate subagent based on user input"
+    model_config:
+        model: "model://sfdc_ai__DefaultEinsteinHyperClassifier"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_Case_Resolution: @utils.transition to @subagent.Case_Resolution
+
+subagent Case_Resolution:
+    label: "Case Resolution"
+    description: |
+
+        Case resolution based on past similar cases resolution
+    reasoning:
+        instructions: ->
+            |Take the customer query. Based on customer query invoke the action <action>.
+             Display the summarised response to the custom
+        actions:
+            Prompt_action_to_Customer_queries_resolution: @actions.Prompt_action_to_Customer_queries_resolution
+                with "Input:RetrieverIdOrName" = @variables.RetrieverName
+                with "Input:Query" = ...
+                with outputLanguage = ...
+                with citationMode = ...
+                with isPreviewOnly = ...
+    actions:
+        Prompt_action_to_Customer_queries_resolution:
+            label: "Prompt action to Customer queries resolution"
+            description: "Based on customer query invoke the action . This action should look for the past cases resolutions"
+            target: "generatePromptResponse://Answer_Questions_Based_on_Past_Cases_Resolution"
+            inputs:
+                "Input:RetrieverIdOrName": string
+                    label: "RetrieverIdOrName"
+                    description: "Retriever name"
+                    is_required: True
+                "Input:Query": string
+                    label: "Query"
+                    description: "Customer query"
+                    is_required: True
+                outputLanguage: string
+                    label: "Output language"
+                    description: "Optional. Specify the response language using the appropriate two-character language code or five-character locale code (for example, en_US, en_GB, es, es_MX)."
+                    is_required: False
+                citationMode: string
+                    label: "Citation Mode"
+                    description: "Select Citation Mode"
+                    is_required: False
+                isPreviewOnly: boolean
+                    label: "Preview Only"
+                    description: "Resolves the prompt template without generating an LLM response."
+                    is_required: False
+            outputs:
+                promptResponse: string
+                    label: "Prompt Response"
+                    description: "The prompt response generated by the action based on the specified prompt and input."
+                    is_displayable: False
+                    filter_from_agent: False
+                generationId: string
+                    label: "Prompt Generation ID"
+                    description: "The unique identifier for the prompt generation associated with this action invocation."
+                    is_displayable: False
+                    filter_from_agent: False
+                citations: object
+                    label: "Citations"
+                    description: "The prompt citation response generated by the action based on the specified prompt and input."
+                    complex_data_type_name: "@apexClassType/AiCopilot__GenAiCitationOutput"
+                    is_displayable: False
+                    filter_from_agent: False
