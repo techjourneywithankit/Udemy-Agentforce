@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>66.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Case Priority Launcher</masterLabel>
+    <description>Opens the Agentforce side panel and asks CasePriorityRecommender to recommend a priority for the current Case.</description>
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <objects>
+                <object>Case</object>
+            </objects>
+            <property
+                name="botId"
+                type="String"
+                label="Agentforce Bot Id"
+                description="18-character bot Id from the Agent Builder URL for CasePriorityRecommender."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

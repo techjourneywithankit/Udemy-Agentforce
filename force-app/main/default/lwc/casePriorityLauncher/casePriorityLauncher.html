@@ -1,0 +1,50 @@
+<template>
+    <lightning-card title="Recommend Case Priority" icon-name="standard:bot">
+        <section class="slds-var-p-horizontal_small slds-var-p-bottom_small" aria-busy={isBusy}>
+            <p class="slds-var-m-bottom_small">
+                Ask CasePriorityRecommender for a priority using this Case. The answer appears in the Agentforce
+                side panel.
+            </p>
+            <lightning-input
+                label="Agent Id"
+                field-level-help="Paste the 18-character Id from the Agent Builder URL for CasePriorityRecommender."
+                value={botId}
+                onchange={handleBotIdChange}
+            ></lightning-input>
+            <div class="slds-var-m-top_small" role="group" aria-label="Recommend Case Priority">
+                <lightning-button
+                    class="slds-var-m-right_x-small slds-var-m-bottom_x-small"
+                    data-action="recommend"
+                    variant="brand"
+                    label="Recommend priority"
+                    title="Recommend priority"
+                    disabled={isBusy}
+                    onclick={handleRecommend}
+                ></lightning-button>
+                <lightning-button
+                    class="slds-var-m-right_x-small slds-var-m-bottom_x-small"
+                    data-action="open"
+                    variant="neutral"
+                    label="Open panel"
+                    title="Open panel"
+                    disabled={isBusy}
+                    onclick={handleOpen}
+                ></lightning-button>
+                <lightning-button
+                    class="slds-var-m-bottom_x-small"
+                    data-action="close"
+                    variant="neutral"
+                    label="Close"
+                    title="Close"
+                    disabled={isBusy}
+                    onclick={handleClose}
+                ></lightning-button>
+            </div>
+            <template if:true={hasStatus}>
+                <p class="slds-var-m-top_small" data-id="status" role={statusRole} aria-live={liveMode}>
+                    {statusMessage}
+                </p>
+            </template>
+        </section>
+    </lightning-card>
+</template>
