@@ -1,0 +1,211 @@
+system:
+    instructions: |This agent job is to validate the user and based on that fetch the opportunities based on s
+
+    messages:
+        welcome: |
+            Hi, I'm an AI service assistant. How can I help you?
+        error: "Sorry, it looks like something has gone wrong."
+
+config:
+    agent_label: "Get Opportunity based on Stage"
+    agent_template: "SvcCopilotTmpl__AgentforceServiceAgent"
+    developer_name: "Get_Opportunity_based_on_Stage"
+    description: "Deliver personalized customer interactions with an autonomous AI agent. Agentforce Service Agent intelligently supports your customers with common inquiries and escalates complex issues."
+
+access:
+    default_agent_user: "get_opportunity_based_on_stage@00ddm00000uoupi241048200.ext"
+
+variables:
+    authenticationKey: mutable string
+        description: "Stores the authentication key that's used to generate the verification code."
+        visibility: "Internal"
+    customerId: mutable string
+        description: "Stores the Salesforce user ID or contact ID."
+        visibility: "Internal"
+    customerType: mutable string
+        description: "Stores the customer ID type, whether it's a Salesforce user or a contact."
+        visibility: "Internal"
+    isVerified: mutable boolean = False
+        label: "isVerified"
+        description: "Stores a boolean value that indicates whether the customer code is verified."
+        visibility: "Internal"
+    EndUserId: linked string
+        source: @MessagingSession.MessagingEndUserId
+        description: "This variable may also be referred to as MessagingEndUser Id"
+    RoutableId: linked string
+        source: @MessagingSession.Id
+        description: "This variable may also be referred to as MessagingSession Id"
+    ContactId: linked string
+        source: @MessagingEndUser.ContactId
+        description: "This variable may also be referred to as MessagingEndUser ContactId"
+    EndUserLanguage: linked string
+        source: @MessagingSession.EndUserLanguage
+        description: "This variable may also be referred to as MessagingSession EndUserLanguage"
+    ChannelType: linked string
+        source: @MessagingSession.ChannelType
+        description: "This variable may also be referred to as MessagingSession ChannelType"
+    VerifiedCustomerId: mutable string
+        description: "This variable may also be referred to as VerifiedCustomerId"
+        visibility: "Internal"
+    emailCaseId: mutable string
+        description: "Stores the Salesforce Case ID created by an inbound email."
+        visibility: "External"
+    endUserEmail: mutable string
+        description: "Stores email address of the end user who sent the inbound email."
+        visibility: "External"
+    endUserContactId: mutable string
+        description: "Stores the Salesforce Contact ID associated with the end user who sent the inbound email."
+        visibility: "External"
+    inpStageNameFromUser: mutable string
+        description: "Input Opportunity Stage Name From User"
+        label: "inpStageNameFromUser"
+        visibility: "External"
+    isUserFound: mutable boolean
+        description: "Is User Found Based on email or Username"
+        label: "isUserFound"
+        visibility: "External"
+
+language:
+    additional_locales: "en_GB"
+    default_locale: "en_US"
+    all_additional_locales: False
+start_agent agent_router:
+    label: "Agent Router"
+    description: "Welcome the user and determine the appropriate subagent based on user input"
+    reasoning:
+        instructions: ->
+            | Select the best tool to call based on conversation history and user's intent.
+        actions:
+            go_to_Get_Opportunities_based_on_Stagename: @utils.transition to @subagent.Get_Opportunities_based_on_Stagename
+                description: "Get the opportunities based on the stagename"
+            go_to_User_Verfication: @utils.transition to @subagent.User_Verfication
+                description: "Validate the authenticity of user"
+
+subagent Get_Opportunities_based_on_Stagename:
+    label: "Get Opportunities based on Stagename"
+    description: |
+
+        Your job is to get the opportunities based on the stagename provided by user
+    reasoning:
+        instructions: ->
+            |Your job is to fetch the opportunities based on the stage name given by user.
+             If the user have not given the stage name ask the stage name from the user and store the stage name into the {!@actions.Set_Opportunity_Stage_Name}.
+            if @variables.isVerified == False:
+                transition to @subagent.User_Verfication
+            else:
+                |Based on the stage name given by user invoke the action {!@actions.Get_Opportunity_Based_on_Stage}
+            |
+        actions:
+            Set_Opportunity_Stage_Name: @utils.setVariables
+                description: "Purpose is to store the opportunity stage name give by user"
+                with inpStageNameFromUser = ...
+            Get_Opportunity_Based_on_Stage: @actions.Get_Opportunity_Based_on_Stage
+                available when @variables.inpStageNameFromUser != ""
+                with inpStageName = ...
+    actions:
+        Get_Opportunity_Based_on_Stage:
+            label: "Get Opportunity Based on Stage"
+            description: "Get Opportunity Based on Stage"
+            target: "flow://Get_Opportunities_Based_on_Stagename"
+            inputs:
+                inpStageName: string
+                    label: "inpStageName"
+                    description: "Input Stage Name Of Opportunity"
+                    is_required: True
+            outputs:
+                ouputOpportunityRecords: list[object]
+                    label: "ouputOpportunityRecords"
+                    description: "Opportunity Records based on stage"
+                    complex_data_type_name: "lightning__recordInfoType"
+                    is_displayable: True
+                    filter_from_agent: False
+
+subagent User_Verfication:
+    label: "User Verfication"
+    description: |
+
+        Your role is to verify the customer's identity.
+    reasoning:
+        instructions: ->
+            |Your role is to verify the customer's identity.
+             Follow the steps below in order
+             Step 1: Request Customer Identifier
+             Ask the customer to provide either their email address or username.
+             If the customer has not provided an email address or username/user ID, politely ask them to provide one.
+             Do not proceed with verification until the customer provides an email address or username/user ID.
+             Step 2: Send Verification Code
+             Once the customer provides their email address or username/user ID:1. Invoke action {!@actions.Verify_User}Pass the customer's provided \*\*email address or username/user ID\*\* as the appropriate input.3. After invoking the action, instruct the customer to enter the verification code they received.
+             Step 3: Validate OTP
+            if @variables.isUserFound == True:
+                |provide the verification code/OTP.
+                |Wait for the verification code/otp shared by the user
+                |Once the customer provides the OTP: invoke the action {!@actions.Validate_OTP}. Pass the otp and any required customer identifier to the action. go to the next step.
+            else:
+                |Entered email address or user name is not valid.
+            |Step 4: Action after successful verification.
+            if @variables.isVerified == True:
+                transition to @topic.agent_router
+        actions:
+            Verify_User: @actions.Verify_User
+                with emailsOrUserids = ...
+                set @variables.authenticationKey = @outputs.authenticationKey
+                set @variables.isUserFound = @outputs.userFound
+            Validate_OTP: @actions.Validate_OTP
+                with inpAuthKey = ...
+                with inpOtp = ...
+                set @variables.isVerified = @outputs.outIsVerified
+    actions:
+        Verify_User:
+            label: "Verify User"
+            description: "Validate user is valid or not by sending OTP (verification code) to the user email"
+            target: "apex://userVerification"
+            inputs:
+                emailsOrUserids: string
+                    label: "emailsOrUserids"
+                    description: "Email or username shared by the user"
+                    is_required: True
+            outputs:
+                authenticationKey: string
+                    label: "Authentication Key"
+                    description: "The verification code that was emailed; the agent stores this to validate later"
+                    is_displayable: False
+                    filter_from_agent: False
+                customerId: string
+                    label: "Customer Id"
+                    description: "Salesforce User Id of the matched user"
+                    is_displayable: False
+                    filter_from_agent: False
+                message: string
+                    label: "Message"
+                    description: "Status message for the agent to speak back"
+                    is_displayable: True
+                    filter_from_agent: False
+                userFound: boolean
+                    label: "User Found"
+                    description: "True when a matching user was found and the code was sent"
+                    is_displayable: False
+                    filter_from_agent: False
+        Validate_OTP:
+            label: "Validate OTP"
+            description: "Validate OTP Based on entered value by user with auth key"
+            target: "flow://Validate_OTP"
+            inputs:
+                inpAuthKey: string
+                    label: "inpAuthKey"
+                    description: "Authentication Key generated by Apex based action"
+                    is_required: True
+                inpOtp: string
+                    label: "inpOtp"
+                    description: "OTP provided by User"
+                    is_required: True
+            outputs:
+                outIsVerified: boolean
+                    label: "outIsVerified"
+                    description: "Is User Verified"
+                    is_displayable: False
+                    filter_from_agent: False
+                outResponse: string
+                    label: "outResponse"
+                    description: "Verification Response"
+                    is_displayable: True
+                    filter_from_agent: False
